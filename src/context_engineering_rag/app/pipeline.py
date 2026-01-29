@@ -10,7 +10,10 @@ import time
 from llama_index.core import VectorStoreIndex
 from llama_index.core.schema import BaseNode, NodeWithScore
 
-from context_engineering_rag.generation.generator import AnswerGenerator
+from context_engineering_rag.generation.generator import (
+    AnswerGenerator,
+    format_tables_for_display,
+)
 from context_engineering_rag.monitoring.guardrails import Guardrails
 from context_engineering_rag.models import QueryResponse, RetrievedNode
 from context_engineering_rag.retriever.retriever import HybridRetriever
@@ -27,6 +30,8 @@ class Pipeline:
         text = nws.node.get_content()
         node_id = nws.node.node_id
         metadata = dict(nws.node.metadata) if nws.node.metadata else {}
+        if metadata.get("tables"):
+            metadata["tables_display"] = format_tables_for_display(metadata["tables"])
         return RetrievedNode(
             text=text,
             score=float(nws.score),

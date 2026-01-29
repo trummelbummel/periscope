@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 from context_engineering_rag.generation.generator import (
     AnswerGenerator,
+    format_tables_for_display,
     generate_answer,
     get_llm,
 )
@@ -78,3 +79,32 @@ def test_generate_answer_convenience_function() -> None:
 
     assert result == "Convenience answer"
     mock_llm.complete.assert_called_once()
+
+
+def test_format_tables_for_display_returns_markdown() -> None:
+    """format_tables_for_display produces markdown table string."""
+    tables = [[["A", "B"], ["1", "2"]]]
+    out = format_tables_for_display(tables)
+    assert "| A | B |" in out
+    assert "| 1 | 2 |" in out
+    assert "---" in out
+
+
+def test_answer_generator_includes_tables_in_context_when_present() -> None:
+    """When node has metadata['tables'], context string includes formatted tables."""
+    mock_llm = MagicMock()
+    mock_llm.complete.return_value = MagicMock(text="OK")
+
+    node = RetrievedNode(
+        text="Some text",
+        score=0.9,
+        metadata={"tables": [[["Col1", "Col2"], ["a", "b"]]]},
+    )
+    generator = AnswerGenerator(llm=mock_llm)
+    generator.generate_answer(query="Q?", context_nodes=[node])
+
+    call_prompt = mock_llm.complete.call_args[0][0]
+    assert "Some text" in call_prompt
+    assert "Tables:" in call_prompt
+    assert "| Col1 | Col2 |" in call_prompt
+    assert "| a | b |" in call_prompt

@@ -27,14 +27,9 @@ ARXIV_DATA_DIR: Path = Path(
 # arXiv scraper configuration
 ARXIV_DEFAULT_QUERY = 'abs:"context engineering" OR ti:"context engineering" AND abs:"large language model"'
 ARXIV_MAX_RESULTS = 100
-# Base API endpoint as documented by arXiv (use HTTPS to avoid redirects)
 ARXIV_API_BASE_URL = "https://export.arxiv.org/api/query"
-# HTTP timeout (seconds) for arXiv API requests
 ARXIV_HTTP_TIMEOUT = 30.0
-# User agent string recommended by arXiv (include contact info)
 ARXIV_USER_AGENT = "rag-arxiv-scraper (mailto:theresa.fruhwuerth@gmail.com)"
-
-
 
 # Document loading: default file extensions for directory reader
 DEFAULT_DOCUMENT_EXTENSIONS: list[str] = [".pdf"]
@@ -48,10 +43,9 @@ EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
 # Generation (LLM)
 GENERATION_MODEL = os.environ.get("GENERATION_MODEL", "gpt-4o")
 GENERATION_PROMPT = os.environ.get(
-    "GENERATION_PROMPT", "Answer the question based only on the following context.\n\nContext:\n{context_str}\n\nQuestion: {query_str}\n\nAnswer:"
+    "GENERATION_PROMPT",
+    "Answer the question based only on the following context.\n\nContext:\n{context_str}\n\nQuestion: {query_str}\n\nAnswer:",
 )
-
-# OpenAI API key (for generation)
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 
 # Retrieval
