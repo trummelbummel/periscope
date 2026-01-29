@@ -1,4 +1,4 @@
-"""Re-export Pydantic models from data_models for backward compatibility."""
+"""Re-export data models for context_engineering_rag.models."""
 
 from context_engineering_rag.data_models import (
     ArxivResult,

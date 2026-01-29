@@ -18,11 +18,26 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 PORT = int(os.environ.get("PORT", "8000"))
 API_HOST = os.environ.get("API_HOST", "0.0.0.0")
 
-# Data paths
-ARXIV_DATA_DIR: Path = Path(
-    os.environ.get("ARXIV_DATA_DIR", str(_PROJECT_ROOT / "data" / "arxiv"))
-)
+# Data paths (defined before arXiv paths that may use DATA_DIR)
 DATA_DIR: Path = Path(os.environ.get("DATA_DIR", str(_PROJECT_ROOT / "data")))
+ARXIV_DATA_DIR: Path = Path(
+    os.environ.get("ARXIV_DATA_DIR", str(DATA_DIR / "arxiv"))
+)
+
+# arXiv scraper configuration
+ARXIV_DEFAULT_QUERY = 'abs:"context engineering" OR ti:"context engineering" AND abs:"large language model"'
+ARXIV_MAX_RESULTS = 100
+# Base API endpoint as documented by arXiv (use HTTPS to avoid redirects)
+ARXIV_API_BASE_URL = "https://export.arxiv.org/api/query"
+# HTTP timeout (seconds) for arXiv API requests
+ARXIV_HTTP_TIMEOUT = 30.0
+# User agent string recommended by arXiv (include contact info)
+ARXIV_USER_AGENT = "rag-arxiv-scraper (mailto:theresa.fruhwuerth@gmail.com)"
+
+
+
+# Document loading: default file extensions for directory reader
+DEFAULT_DOCUMENT_EXTENSIONS: list[str] = [".pdf"]
 CHROMA_PERSIST_DIR: Path = Path(
     os.environ.get("CHROMA_PERSIST_DIR", str(_PROJECT_ROOT / "chroma_db"))
 )
@@ -41,6 +56,10 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 
 # Retrieval
 TOP_K = int(os.environ.get("TOP_K", "10"))
+
+# Chunking (header-aware chunker for research papers)
+CHUNK_SIZE = int(os.environ.get("CHUNK_SIZE", "512"))
+CHUNK_OVERLAP = int(os.environ.get("CHUNK_OVERLAP", "50"))
 
 # Guardrails: abstain from generation if best similarity score below this
 SIMILARITY_THRESHOLD = float(os.environ.get("SIMILARITY_THRESHOLD", "0.5"))

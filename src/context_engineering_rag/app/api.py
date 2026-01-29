@@ -55,6 +55,7 @@ def _ensure_index() -> tuple:
     global _bm25_nodes
     if _vector_index is not None and _bm25_nodes is not None:
         return _vector_index, _bm25_nodes
+    logger.info("Building index from data directory")
     set_global_embed_model()
     docs = load_documents_from_directory(DATA_DIR)
     if not docs:
@@ -83,6 +84,17 @@ def _ensure_index() -> tuple:
     return _vector_index, _bm25_nodes
 
 
+def _ensure_index_or_raise(status_code: int = 503, log_message: str = "Failed to load index: %s") -> tuple:
+    """Call _ensure_index(); on Exception (except HTTPException) log and raise HTTPException."""
+    try:
+        return _ensure_index()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(log_message, e)
+        raise HTTPException(status_code=status_code, detail=str(e)) from e
+
+
 @app.get("/health")
 def health() -> dict:
     """Health check."""
@@ -92,13 +104,7 @@ def health() -> dict:
 @app.post("/query", response_model=QueryResponse)
 def query(request: QueryRequest) -> QueryResponse:
     """Run retrieval and generation for a user question."""
-    try:
-        vector_index, bm25_nodes = _ensure_index()
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception("Failed to load index: %s", e)
-        raise HTTPException(status_code=503, detail=str(e)) from e
+    vector_index, bm25_nodes = _ensure_index_or_raise(503, "Failed to load index: %s")
     top_k = request.top_k if request.top_k is not None else TOP_K
     return run_query(
         query=request.query,
@@ -111,19 +117,5 @@ def query(request: QueryRequest) -> QueryResponse:
 @app.post("/ingest")
 def ingest() -> dict:
     """Trigger ingestion: load PDFs from data dir, chunk, embed, store. Returns stats."""
-    try:
-        _ensure_index()
-        return {"status": "ok", "message": "Index built from data directory"}
-    except HTTPException as e:
-        raise
-    except Exception as e:
-        logger.exception("Ingest failed: %s", e)
-        raise HTTPException(status_code=500, detail=str(e)) from e
-
-
-def run_server(host: str | None = None, port: int | None = None) -> None:
-    """Run uvicorn server (for programmatic use)."""
-    import uvicorn
-    h = host if host is not None else API_HOST
-    p = port if port is not None else PORT
-    uvicorn.run(app, host=h, port=p)
+    _ensure_index_or_raise(500, "Ingest failed: %s")
+    return {"status": "ok", "message": "Index built from data directory"}

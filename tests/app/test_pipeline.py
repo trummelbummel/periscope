@@ -11,8 +11,12 @@ def test_run_query_returns_abstained_when_guardrails_trigger() -> None:
     mock_index = MagicMock()
     mock_nodes: list = []
     with (
-        patch("context_engineering_rag.app.pipeline.hybrid_retrieve") as mock_retrieve,
-        patch("context_engineering_rag.app.pipeline.should_abstain") as mock_abstain,
+        patch(
+            "context_engineering_rag.app.pipeline.HybridRetriever.hybrid_retrieve"
+        ) as mock_retrieve,
+        patch(
+            "context_engineering_rag.app.pipeline.Guardrails.should_abstain"
+        ) as mock_abstain,
     ):
         mock_retrieve.return_value = []
         mock_abstain.return_value = True
@@ -29,9 +33,15 @@ def test_run_query_returns_answer_when_generation_succeeds() -> None:
     mock_nodes: list = []
     sources = [RetrievedNode(text="ctx", score=0.9)]
     with (
-        patch("context_engineering_rag.app.pipeline.hybrid_retrieve") as mock_retrieve,
-        patch("context_engineering_rag.app.pipeline.should_abstain") as mock_abstain,
-        patch("context_engineering_rag.app.pipeline.generate_answer") as mock_gen,
+        patch(
+            "context_engineering_rag.app.pipeline.HybridRetriever.hybrid_retrieve"
+        ) as mock_retrieve,
+        patch(
+            "context_engineering_rag.app.pipeline.Guardrails.should_abstain"
+        ) as mock_abstain,
+        patch(
+            "context_engineering_rag.app.pipeline.AnswerGenerator.generate_answer"
+        ) as mock_gen,
     ):
         # hybrid_retrieve returns NodeWithScore-like; pipeline converts to RetrievedNode
         mock_nws = MagicMock()
@@ -56,9 +66,15 @@ def test_run_query_returns_generation_error_metadata_on_exception() -> None:
     mock_index = MagicMock()
     mock_nodes: list = []
     with (
-        patch("context_engineering_rag.app.pipeline.hybrid_retrieve") as mock_retrieve,
-        patch("context_engineering_rag.app.pipeline.should_abstain") as mock_abstain,
-        patch("context_engineering_rag.app.pipeline.generate_answer") as mock_gen,
+        patch(
+            "context_engineering_rag.app.pipeline.HybridRetriever.hybrid_retrieve"
+        ) as mock_retrieve,
+        patch(
+            "context_engineering_rag.app.pipeline.Guardrails.should_abstain"
+        ) as mock_abstain,
+        patch(
+            "context_engineering_rag.app.pipeline.AnswerGenerator.generate_answer"
+        ) as mock_gen,
     ):
         mock_nws = MagicMock()
         mock_nws.node.get_content.return_value = "ctx"

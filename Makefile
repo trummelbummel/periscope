@@ -18,6 +18,14 @@ test: ## Test the code with pytest
 	@echo "🚀 Testing code: Running pytest"
 	@uv run python -m pytest --doctest-modules
 
+.PHONY: run-api
+run-api: ## Run the RAG API server
+	@uv run python -m context_engineering_rag.main_api
+
+.PHONY: run-scraper
+run-scraper: ## Run the arXiv main scraper (fetch and download papers)
+	@uv run python -m context_engineering_rag.main_scraper
+
 .PHONY: build
 build: clean-build ## Build wheel file
 	@echo "🚀 Creating wheel file"

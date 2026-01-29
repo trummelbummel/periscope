@@ -1,4 +1,4 @@
-"""Re-export pipeline from app for backward compatibility."""
+"""Re-export pipeline for context_engineering_rag.pipeline."""
 
 from context_engineering_rag.app.pipeline import run_query
 
