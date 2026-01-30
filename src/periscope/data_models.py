@@ -56,6 +56,10 @@ class IngestionStats(BaseModel):
     total_chars: int = Field(..., ge=0)
     avg_chunk_size: float = Field(..., ge=0)
     paths: list[str] = Field(default_factory=list)
+    index_version: str = Field(
+        default="",
+        description="Index version from config (INDEX_VERSION); empty for legacy stats.",
+    )
     embedding_model: str = Field(
         default="",
         description="HuggingFace model id used for embeddings during ingestion",

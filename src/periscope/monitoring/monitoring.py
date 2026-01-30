@@ -17,10 +17,15 @@ from llama_index.core.evaluation import (
 )
 from llama_index.core.schema import BaseNode
 
-from periscope.config import INGESTION_STATS_PATH
+from periscope.config import (
+    INDEX_VERSION,
+    INGESTION_STATS_PATH,
+    RETRIEVAL_EXPERIMENT_MAX_NODES,
+    RETRIEVAL_EXPERIMENT_NUM_QUESTIONS_PER_CHUNK,
+    TOP_K,
+)
 from periscope.generation.generator import AnswerGenerator
 from periscope.models import IngestionStats
-from periscope.retriever.retriever import HybridRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +55,7 @@ class IngestionStatsWriter:
         preprocessing_config: dict | None = None,
         chunk_size: int = 0,
         chunk_overlap: int = 0,
+        index_version: str | None = None,
     ) -> IngestionStats:
         """Compute ingestion statistics.
 
@@ -61,17 +67,20 @@ class IngestionStatsWriter:
         :param preprocessing_config: Preprocessing options used during ingestion.
         :param chunk_size: CHUNK_SIZE used during ingestion (for config fingerprint).
         :param chunk_overlap: CHUNK_OVERLAP used during ingestion (for config fingerprint).
+        :param index_version: Index version (e.g. from config INDEX_VERSION); default from config.
         :return: IngestionStats model.
         """
         avg = total_chars / chunk_count if chunk_count else 0.0
         paths_list = paths if paths is not None else []
         preprocess = preprocessing_config if preprocessing_config is not None else {}
+        version = index_version if index_version is not None else INDEX_VERSION
         return IngestionStats(
             document_count=document_count,
             chunk_count=chunk_count,
             total_chars=total_chars,
             avg_chunk_size=round(avg, 2),
             paths=paths_list,
+            index_version=version,
             embedding_model=embedding_model,
             preprocessing_config=preprocess,
             chunk_size=chunk_size,
@@ -104,6 +113,7 @@ class IngestionStatsWriter:
         preprocessing_config: dict | None = None,
         chunk_size: int = 0,
         chunk_overlap: int = 0,
+        index_version: str | None = None,
     ) -> IngestionStats:
         """Compute ingestion statistics (convenience: create writer and run)."""
         writer = IngestionStatsWriter()
@@ -116,6 +126,7 @@ class IngestionStatsWriter:
             preprocessing_config=preprocessing_config,
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
+            index_version=index_version,
         )
 
     @staticmethod
@@ -141,6 +152,7 @@ def compute_ingestion_stats(
     preprocessing_config: dict | None = None,
     chunk_size: int = 0,
     chunk_overlap: int = 0,
+    index_version: str | None = None,
 ) -> IngestionStats:
     """Compute ingestion statistics. Delegates to IngestionStatsWriter."""
     return IngestionStatsWriter.compute_ingestion_stats_default(
@@ -152,6 +164,7 @@ def compute_ingestion_stats(
         preprocessing_config=preprocessing_config,
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
+        index_version=index_version,
     )
 
 
@@ -223,7 +236,7 @@ class RetrievalExperiment:
     ) -> Path:
         """Run retrieval evaluation on the given index and nodes.
 
-        Builds a HybridRetriever over the provided index + nodes, generates a small
+        Uses the vector index retriever (BaseRetriever), generates a small
         synthetic QA dataset from the nodes using the configured LLM, evaluates
         retrieval with standard metrics, and writes aggregated results to JSON.
 
@@ -241,8 +254,8 @@ class RetrievalExperiment:
             len(bm25_nodes),
         )
 
-        # Build hybrid retriever over the existing index and nodes.
-        retriever = HybridRetriever(vector_index=vector_index, bm25_nodes=bm25_nodes)
+        # Use the vector index retriever (BaseRetriever) for evaluation.
+        retriever = vector_index.as_retriever(similarity_top_k=TOP_K)
 
         # Generate a synthetic QA dataset over the subset of nodes.
         llm = AnswerGenerator.get_llm()
@@ -274,6 +287,7 @@ class RetrievalExperiment:
             "num_queries": len(metric_dicts),
             "num_nodes": len(nodes_subset),
             "num_questions_per_chunk": self._num_questions_per_chunk,
+            "index_version": INDEX_VERSION,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -289,14 +303,18 @@ def run_retrieval_experiment(
     vector_index: VectorStoreIndex,
     bm25_nodes: list[BaseNode],
     output_path: Path | None = None,
-    num_questions_per_chunk: int = 1,
-    max_nodes: int = 50,
+    num_questions_per_chunk: int | None = None,
+    max_nodes: int | None = None,
 ) -> Path:
-    """Convenience wrapper to run RetrievalExperiment with defaults."""
+    """Convenience wrapper to run RetrievalExperiment; uses config defaults when args omitted."""
     experiment = RetrievalExperiment(
         output_path=output_path,
-        num_questions_per_chunk=num_questions_per_chunk,
-        max_nodes=max_nodes,
+        num_questions_per_chunk=num_questions_per_chunk
+        if num_questions_per_chunk is not None
+        else RETRIEVAL_EXPERIMENT_NUM_QUESTIONS_PER_CHUNK,
+        max_nodes=max_nodes
+        if max_nodes is not None
+        else RETRIEVAL_EXPERIMENT_MAX_NODES,
     )
     return experiment.run(vector_index=vector_index, bm25_nodes=bm25_nodes)
 

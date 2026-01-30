@@ -32,7 +32,7 @@ ARXIV_DATA_DIR: Path = Path(
 )
 
 # arXiv scraper configuration
-ARXIV_DEFAULT_QUERY = 'abs:"context engineering" OR ti:"context engineering" AND abs:"large language model"'
+ARXIV_DEFAULT_QUERY = 'ti:"prompt optimization" AND abs:"large language model"'
 ARXIV_MAX_RESULTS = 100
 ARXIV_API_BASE_URL = "https://export.arxiv.org/api/query"
 ARXIV_HTTP_TIMEOUT = 30.0
@@ -61,7 +61,14 @@ GENERATION_MODEL = os.environ.get(
 )
 GENERATION_PROMPT = os.environ.get(
     "GENERATION_PROMPT",
-    "Answer the question based only on the following context.\n\nContext:\n{context_str}\n\nQuestion: {query_str}\n\nAnswer:",
+    """Answer the question based only on the following context. 
+    Answer in well structured markdown format. 
+    Use headings and subheadings as well as bullet points
+    to structure the answer.
+    Also if there are numbers in the context highlight them in bold.
+    \n\nContext:\n{context_str}\n\n
+    Question: {query_str}\n\n
+    Answer:""",
 )
 HUGGINGFACE_TOKEN = os.environ.get("HUGGINGFACE_TOKEN", "") or os.environ.get("HF_TOKEN", "")
 
@@ -94,12 +101,23 @@ ENABLE_GUARDRAILS = os.environ.get("ENABLE_GUARDRAILS", "false").strip().lower()
 )
 SIMILARITY_THRESHOLD = float(os.environ.get("SIMILARITY_THRESHOLD", "0.5"))
 
+# Index version: used in ingestion stats, retrieval evaluation, and Chroma collection metadata
+INDEX_VERSION = os.environ.get("INDEX_VERSION", "1")
+
 # Monitoring: where to write ingestion statistics
 INGESTION_STATS_PATH: Path = Path(
     os.environ.get(
         "INGESTION_STATS_PATH",
         str(_PROJECT_ROOT / "monitoring" / "data" / "ingestion_stats.json"),
     )
+)
+
+# Retrieval experiment (monitoring): max nodes and questions per chunk
+RETRIEVAL_EXPERIMENT_MAX_NODES = int(
+    os.environ.get("RETRIEVAL_EXPERIMENT_MAX_NODES", "10")
+)
+RETRIEVAL_EXPERIMENT_NUM_QUESTIONS_PER_CHUNK = int(
+    os.environ.get("RETRIEVAL_EXPERIMENT_NUM_QUESTIONS_PER_CHUNK", "1")
 )
 
 # Miro board (MCP server: write SVG to board)

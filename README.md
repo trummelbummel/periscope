@@ -11,6 +11,32 @@ This is a module implementing a rag use case with cursor.
 - **Github repository**: <https://github.com/trummelbummel/periscope/>
 - **Documentation** <https://trummelbummel.github.io/periscope/>
 
+## Configuration
+
+Configuration is read from environment variables; you can use a `.env` file in the project root (loaded automatically).
+
+**Required for the prototype to run:**
+
+- **`HUGGINGFACE_TOKEN`** (or `HF_TOKEN`) – Used for answer generation via the Hugging Face Inference API. Create a token at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens).
+
+**Recommended to set for the scraper:**
+
+- **`ARXIV_DEFAULT_QUERY`** – arXiv search query used by `make run-scraper` (default is set in `config.py`; override to fetch papers for your topic).
+
+**Optional settings** (see `config.py` for defaults and full list):
+
+- `PORT`, `API_HOST` – API server
+- `DATA_DIR`, `ARXIV_DATA_DIR` – Where PDFs are read from
+- `GENERATION_MODEL` – Hugging Face model id for generation
+- `EMBEDDING_MODEL` – Embedding model for the vector index
+- `TOP_K` – Number of retrieved chunks per query
+- `CHUNK_SIZE`, `CHUNK_OVERLAP` – Chunking for ingestion
+- `ENABLE_GUARDRAILS`, `SIMILARITY_THRESHOLD` – When to abstain from answering
+- `ENABLE_PERFORMANCE_EXTRACTION` – Set to `true` to enable LLM-based performance metadata during ingestion (off by default)
+- `INDEX_VERSION` – Version string written to ingestion stats, retrieval evaluation JSON, and Chroma collection metadata (default `1`)
+- `RETRIEVAL_EXPERIMENT_MAX_NODES`, `RETRIEVAL_EXPERIMENT_NUM_QUESTIONS_PER_CHUNK` – Max nodes and questions per chunk for `make run-monitoring` retrieval evaluation (defaults: `50`, `1`)
+- `MIRO_ACCESS_TOKEN`, `MIRO_BOARD_ID` – For the Miro MCP server
+
 ## Getting started with your project
 
 ### 1. Create a New Repository
@@ -59,7 +85,17 @@ This will launch the FastAPI server on the configured `PORT` (default `8000`).
 Open `http://localhost:8000/ui/` in your browser to use the UI, or `http://localhost:8000/docs`
 for the interactive OpenAPI docs.
 
-### 5. Run the pre-commit hooks
+### 5. Run retrieval monitoring (optional)
+
+To evaluate retrieval quality on the current index and write metrics to `monitoring/data/retrieval_evaluation.json`, run:
+
+```bash
+make run-monitoring
+```
+
+This loads the persisted Chroma index and BM25 nodes (or runs ingestion first if missing), then runs a retrieval experiment (hit rate, MRR, precision, recall, etc.) and saves the results. Use `RETRIEVAL_EXPERIMENT_MAX_NODES` and `RETRIEVAL_EXPERIMENT_NUM_QUESTIONS_PER_CHUNK` in config to control experiment size.
+
+### 6. Run the pre-commit hooks
 
 Initially, the CI/CD pipeline might be failing due to formatting issues. To resolve those run:
 
@@ -67,7 +103,7 @@ Initially, the CI/CD pipeline might be failing due to formatting issues. To reso
 uv run pre-commit run -a
 ```
 
-### 6. Commit the changes
+### 7. Commit the changes
 
 Lastly, commit the changes made by the two steps above to your repository.
 

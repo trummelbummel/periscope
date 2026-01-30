@@ -144,6 +144,7 @@ class IngestionPipeline:
             preprocessing_config=self._preprocessing_config.to_dict(),
             chunk_size=self._chunk_size,
             chunk_overlap=self._chunk_overlap,
+            index_version=None,
         )
         write_ingestion_stats(stats, output_path=self._ingestion_stats_path)
 

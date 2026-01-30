@@ -13,7 +13,7 @@ from llama_index.core import VectorStoreIndex
 from llama_index.core.schema import BaseNode
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
-from periscope.config import CHROMA_PERSIST_DIR, INDEX_NODES_PATH
+from periscope.config import CHROMA_PERSIST_DIR, INDEX_NODES_PATH, INDEX_VERSION
 from periscope.embedder import set_global_embed_model
 
 logger = logging.getLogger(__name__)
@@ -40,7 +40,10 @@ class ChromaIndexBuilder:
         client = chromadb.PersistentClient(path=str(self._persist_dir))
         collection = client.get_or_create_collection(
             name=COLLECTION_NAME,
-            metadata={"description": "Context engineering RAG chunks"},
+            metadata={
+                "description": "Context engineering RAG chunks",
+                "index_version": INDEX_VERSION,
+            },
         )
         return ChromaVectorStore(chroma_collection=collection)
 
@@ -122,7 +125,10 @@ def load_index_from_chroma(
         client = chromadb.PersistentClient(path=str(persist_dir))
         collection = client.get_or_create_collection(
             name=COLLECTION_NAME,
-            metadata={"description": "Context engineering RAG chunks"},
+            metadata={
+                "description": "Context engineering RAG chunks",
+                "index_version": INDEX_VERSION,
+            },
         )
         if collection.count() == 0:
             return None
