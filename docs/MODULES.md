@@ -65,14 +65,13 @@ Documentation is derived strictly from the codebase (docstrings, `__all__`, and 
 - **Purpose:** Orchestrate retrieval and generation with guardrails and observability (docstring: "Composes: hybrid retrieval -> guardrails -> answer generation. Returns structured QueryResponse with answer, sources, metadata (per PRD).").
 - **Key responsibilities:**
   - Run hybrid retrieval via `HybridRetriever.hybrid_retrieve`.
-  - Optionally filter sources by `min_perf_improvement` using `perf_improvement_value` in node metadata.
   - Convert `NodeWithScore` to `RetrievedNode` (including `tables_display` when metadata has `tables`).
   - If guardrails enabled and `should_abstain(sources)` True, return `QueryResponse` with empty answer and `abstained=True`.
   - Otherwise call `AnswerGenerator.generate_answer_with_options(query, context_nodes=sources)` and return `QueryResponse` with answer, sources, metadata (retrieval_time_seconds, num_sources, generation_time_seconds), and `abstained=False`; on generation exception return response with `generation_error` in metadata.
 - **Important public interfaces:**
   - `Pipeline` — Class that orchestrates retrieval, guardrails, and answer generation.
-  - `Pipeline.run_query(query, vector_index, bm25_nodes, top_k=None, min_perf_improvement=None) -> QueryResponse` — Static method implementing the full flow.
-  - `run_query(query, vector_index, bm25_nodes, top_k=None, min_perf_improvement=None) -> QueryResponse` — Module-level wrapper delegating to `Pipeline.run_query`.
+  - `Pipeline.run_query(query, vector_index, bm25_nodes, top_k=None) -> QueryResponse` — Static method implementing the full flow.
+  - `run_query(query, vector_index, bm25_nodes, top_k=None) -> QueryResponse` — Module-level wrapper delegating to `Pipeline.run_query`.
 
 ---
 
@@ -91,7 +90,7 @@ Documentation is derived strictly from the codebase (docstrings, `__all__`, and 
 
 - **Purpose:** Configuration for the periscope RAG service (docstring: "All paths, models, ports, and API keys are configurable via environment variables or defaults. Load with python-dotenv for .env support. Lives at project root (next to pyproject.toml).").
 - **Key responsibilities:**
-  - Define and export all settings from environment (with defaults): API (PORT, API_HOST, API_RELOAD), data paths (DATA_DIR, ARXIV_DATA_DIR), arXiv (ARXIV_DEFAULT_QUERY, ARXIV_MAX_RESULTS, ARXIV_API_BASE_URL, ARXIV_HTTP_TIMEOUT, ARXIV_USER_AGENT), document extensions, Chroma/INDEX paths, embedding/generation models and prompt, TOP_K, chunking, preprocessing flags, performance extraction flag, guardrails and SIMILARITY_THRESHOLD, INDEX_VERSION, INGESTION_STATS_PATH, RETRIEVAL_EXPERIMENT_*, Miro-related variables.
+  - Define and export all settings from environment (with defaults): API (PORT, API_HOST, API_RELOAD), data paths (DATA_DIR, ARXIV_DATA_DIR), arXiv (ARXIV_DEFAULT_QUERY, ARXIV_MAX_RESULTS, ARXIV_API_BASE_URL, ARXIV_HTTP_TIMEOUT, ARXIV_USER_AGENT), document extensions, Chroma/INDEX paths, embedding/generation models and prompt, TOP_K, chunking, preprocessing flags, guardrails and SIMILARITY_THRESHOLD, INDEX_VERSION, INGESTION_STATS_PATH, RETRIEVAL_EXPERIMENT_*, Miro-related variables.
 - **Important public interfaces:**
   - All uppercase names listed above (e.g. `PORT`, `API_HOST`, `CHROMA_PERSIST_DIR`, `EMBEDDING_MODEL`, `GENERATION_MODEL`, `TOP_K`, `CHUNK_SIZE`, `CHUNK_OVERLAP`, `INGESTION_STATS_PATH`, `RETRIEVAL_EXPERIMENT_MAX_NODES`, `RETRIEVAL_EXPERIMENT_NUM_QUESTIONS_PER_CHUNK`, etc.) — read by other modules.
 
@@ -112,7 +111,7 @@ Documentation is derived strictly from the codebase (docstrings, `__all__`, and 
 - **Key responsibilities:**
   - Define request/response and stats models with validation and field descriptions.
 - **Important public interfaces:**
-  - `QueryRequest` — query (required), top_k, min_perf_improvement.
+  - `QueryRequest` — query (required), top_k.
   - `RetrievedNode` — text, score, node_id, metadata.
   - `QueryResponse` — answer, sources, metadata, abstained.
   - `IngestionStats` — document_count, chunk_count, total_chars, avg_chunk_size, paths, index_version, embedding_model, preprocessing_config, chunk_size, chunk_overlap.
@@ -163,9 +162,10 @@ Documentation is derived strictly from the codebase (docstrings, `__all__`, and 
 
 ### `ingestion.document_reader`
 
-- **Purpose:** Read and process PDF documents from the data directory; support PDF format (docstring).
+- **Purpose:** Read and process PDF documents from the data directory using Docling; support PDF format (docstring).
 - **Key responsibilities:**
-  - Load documents from a directory as LlamaIndex Documents via SimpleDirectoryReader; extract text from a single PDF via pypdf PdfReader.
+  - Load documents from a directory as LlamaIndex Documents via Docling DocumentConverter; extract text (Markdown with layout and tables), section headers, and tables; add headers and tables to document metadata.
+  - Single-file extraction via `read_pdf_path(path)` returns Markdown. `load_documents()` returns one Document per file with metadata: `file_path`, `headers` (section headers and titles), `tables` (table HTML).
 - **Important public interfaces:**
   - `DocumentReader` — Constructor: directory, required_extensions (defaults from config). Methods: `read_pdf_path(path) -> str`, `load_documents() -> list[Document]`; static: `read_pdf_path_default(path)`, `load_documents_from_directory_default(directory, required_extensions)`.
   - `read_pdf_path(path) -> str` — Module-level.

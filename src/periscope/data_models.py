@@ -11,14 +11,6 @@ class QueryRequest(BaseModel):
 
     query: str = Field(..., min_length=1, description="User question")
     top_k: int | None = Field(default=None, ge=1, le=50, description="Max retrieval count")
-    min_perf_improvement: float | None = Field(
-        default=None,
-        ge=0,
-        description=(
-            "Optional minimum main performance improvement required for retrieved chunks "
-            "(e.g. percentage-point gain over baselines)."
-        ),
-    )
 
 
 class RetrievedNode(BaseModel):

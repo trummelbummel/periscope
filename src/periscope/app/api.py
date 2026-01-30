@@ -155,7 +155,6 @@ def query(request: QueryRequest) -> QueryResponse:
         vector_index=vector_index,
         bm25_nodes=bm25_nodes,
         top_k=top_k,
-        min_perf_improvement=request.min_perf_improvement,
     )
 
 
