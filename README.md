@@ -1,4 +1,4 @@
-# periscope
+# Periscope
 
 [![Release](https://img.shields.io/github/v/release/trummelbummel/periscope)](https://img.shields.io/github/v/release/trummelbummel/periscope)
 [![Build status](https://img.shields.io/github/actions/workflow/status/trummelbummel/periscope/main.yml?branch=main)](https://github.com/trummelbummel/periscope/actions/workflows/main.yml?query=branch%3Amain)
@@ -10,6 +10,13 @@ This is a module implementing a rag use case with cursor.
 
 - **Github repository**: <https://github.com/trummelbummel/periscope/>
 - **Documentation** <https://trummelbummel.github.io/periscope/>
+
+
+# Documentation
+
+To find them Deep research is often too high level and Google won't find anything of value either. That is why there is Periscope a RAG system containing information on the latests Arxiv papers on context engineering, chunked based on understanding of research paper structure can give us an edge to find information that will make a difference.
+
+More information on this project can also be found in `./docs`.
 
 ## Configuration
 

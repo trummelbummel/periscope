@@ -1,0 +1,121 @@
+graph TD
+    subgraph entrypoints["Entry points"]
+        main_api[main_api]
+        main_scraper[main_scraper]
+        run_monitoring[run_monitoring]
+    end
+
+    subgraph app["app"]
+        app_api[app.api]
+        app_pipeline[app.pipeline]
+    end
+
+    subgraph pipeline_reexport["Re-exports"]
+        pipeline[pipeline]
+        embedder[embedder]
+        vector_store[vector_store]
+    end
+
+    subgraph config_models["Config & models"]
+        config[config]
+        models[models]
+        data_models[data_models]
+    end
+
+    subgraph ingestion["ingestion"]
+        ingestion_init[ingestion]
+        ingestion_pipeline[ingestion.ingestion_pipeline]
+        chunker[ingestion.chunker]
+        document_reader[ingestion.document_reader]
+        preprocessor[ingestion.preprocessor]
+        performance_extractor[ingestion.performance_extractor]
+        table_extractor[ingestion.table_extractor]
+    end
+
+    subgraph retriever["retriever"]
+        retriever_retriever[retriever.retriever]
+        retriever_vector_store[retriever.vector_store]
+        retriever_embedder[retriever.embedder]
+    end
+
+    subgraph generation["generation"]
+        generation_generator[generation.generator]
+    end
+
+    subgraph monitoring["monitoring"]
+        monitoring_init[monitoring]
+        monitoring_monitoring[monitoring.monitoring]
+        monitoring_guardrails[monitoring.guardrails]
+    end
+
+    subgraph scraper["scraper"]
+        scraper_arxiv_scraper[scraper.arxiv_scraper]
+    end
+
+    main_api --> app_api
+    main_api --> config
+    main_scraper --> config
+    main_scraper --> scraper_arxiv_scraper
+    run_monitoring --> config
+    run_monitoring --> ingestion_init
+    run_monitoring --> monitoring_init
+    run_monitoring --> vector_store
+
+    app_api --> config
+    app_api --> ingestion_init
+    app_api --> models
+    app_api --> monitoring_init
+    app_api --> pipeline
+    app_api --> vector_store
+
+    app_pipeline --> config
+    app_pipeline --> generation_generator
+    app_pipeline --> monitoring_guardrails
+    app_pipeline --> models
+    app_pipeline --> retriever_retriever
+
+    pipeline --> app_pipeline
+
+    ingestion_init --> chunker
+    ingestion_init --> document_reader
+    ingestion_init --> ingestion_pipeline
+    ingestion_init --> preprocessor
+    ingestion_init --> table_extractor
+
+    ingestion_pipeline --> config
+    ingestion_pipeline --> models
+    ingestion_pipeline --> chunker
+    ingestion_pipeline --> document_reader
+    ingestion_pipeline --> preprocessor
+    ingestion_pipeline --> performance_extractor
+    ingestion_pipeline --> retriever_embedder
+    ingestion_pipeline --> monitoring_init
+    ingestion_pipeline --> vector_store
+
+    document_reader --> config
+    chunker --> config
+    performance_extractor --> config
+
+    retriever_retriever --> config
+    retriever_retriever --> embedder
+    retriever_vector_store --> config
+    retriever_vector_store --> embedder
+    retriever_embedder --> config
+
+    embedder --> retriever_embedder
+    vector_store --> retriever_vector_store
+
+    generation_generator --> config
+    generation_generator --> models
+
+    monitoring_init --> monitoring_monitoring
+    monitoring_init --> monitoring_guardrails
+    monitoring_monitoring --> config
+    monitoring_monitoring --> generation_generator
+    monitoring_monitoring --> models
+    monitoring_guardrails --> config
+    monitoring_guardrails --> models
+
+    scraper_arxiv_scraper --> config
+
+    models --> data_models

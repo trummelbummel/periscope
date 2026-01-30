@@ -26,7 +26,7 @@ API_RELOAD = os.environ.get("API_RELOAD", os.environ.get("RELOAD", "0")).strip()
 )
 
 # Data paths (defined before arXiv paths that may use DATA_DIR)
-DATA_DIR: Path = Path(os.environ.get("DATA_DIR", str(_PROJECT_ROOT / "data/arxiv/test")))
+DATA_DIR: Path = Path(os.environ.get("DATA_DIR", str(_PROJECT_ROOT / "data/arxiv")))
 ARXIV_DATA_DIR: Path = Path(
     os.environ.get("ARXIV_DATA_DIR", str(DATA_DIR / "arxiv"))
 )
