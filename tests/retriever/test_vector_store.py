@@ -1,4 +1,4 @@
-"""Tests for vector_store (context_engineering_rag.retriever.vector_store)."""
+"""Tests for vector_store (periscope.retriever.vector_store)."""
 
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -7,7 +7,7 @@ from llama_index.core import VectorStoreIndex
 
 from llama_index.core.schema import TextNode
 
-from context_engineering_rag.retriever.vector_store import (
+from periscope.retriever.vector_store import (
     ChromaIndexBuilder,
     COLLECTION_NAME,
     build_index_from_nodes,
@@ -46,10 +46,10 @@ def test_build_index_from_nodes_returns_index(tmp_path: Path) -> None:
 
     with (
         patch(
-            "context_engineering_rag.retriever.vector_store.set_global_embed_model"
+            "periscope.retriever.vector_store.set_global_embed_model"
         ) as mock_set,
         patch(
-            "context_engineering_rag.retriever.vector_store.VectorStoreIndex"
+            "periscope.retriever.vector_store.VectorStoreIndex"
         ) as mock_index_class,
     ):
         mock_index_class.return_value = MagicMock(spec=VectorStoreIndex)

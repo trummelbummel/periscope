@@ -1,11 +1,11 @@
-"""Tests for document_reader (context_engineering_rag.ingestion.document_reader)."""
+"""Tests for document_reader (periscope.ingestion.document_reader)."""
 
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
-from context_engineering_rag.ingestion.document_reader import (
+from periscope.ingestion.document_reader import (
     DocumentReader,
     load_documents_from_directory,
     read_pdf_path,
@@ -58,7 +58,7 @@ def test_read_pdf_path_extracts_text(tmp_path: Path) -> None:
 def test_load_documents_from_directory_empty_dir(tmp_path: Path) -> None:
     """load_documents_from_directory returns a list when given a directory."""
     with patch(
-        "context_engineering_rag.ingestion.document_reader.SimpleDirectoryReader"
+        "periscope.ingestion.document_reader.SimpleDirectoryReader"
     ) as mock_reader:
         mock_reader.return_value.load_data.return_value = []
         result = load_documents_from_directory(directory=tmp_path)
@@ -74,7 +74,7 @@ def test_load_documents_from_directory_nonexistent_returns_empty() -> None:
 def test_load_documents_from_directory_accepts_extensions(tmp_path: Path) -> None:
     """load_documents_from_directory accepts required_extensions and returns list."""
     with patch(
-        "context_engineering_rag.ingestion.document_reader.SimpleDirectoryReader"
+        "periscope.ingestion.document_reader.SimpleDirectoryReader"
     ) as mock_reader:
         mock_reader.return_value.load_data.return_value = []
         result = load_documents_from_directory(

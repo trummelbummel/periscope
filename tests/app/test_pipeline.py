@@ -1,9 +1,9 @@
-"""Tests for pipeline (context_engineering_rag.app.pipeline)."""
+"""Tests for pipeline (periscope.app.pipeline)."""
 
 from unittest.mock import MagicMock, patch
 
-from context_engineering_rag.app.pipeline import run_query
-from context_engineering_rag.models import QueryResponse, RetrievedNode
+from periscope.app.pipeline import run_query
+from periscope.models import QueryResponse, RetrievedNode
 
 
 def test_run_query_returns_abstained_when_guardrails_trigger() -> None:
@@ -12,10 +12,10 @@ def test_run_query_returns_abstained_when_guardrails_trigger() -> None:
     mock_nodes: list = []
     with (
         patch(
-            "context_engineering_rag.app.pipeline.HybridRetriever.hybrid_retrieve"
+            "periscope.app.pipeline.HybridRetriever.hybrid_retrieve"
         ) as mock_retrieve,
         patch(
-            "context_engineering_rag.app.pipeline.Guardrails.should_abstain"
+            "periscope.app.pipeline.should_abstain"
         ) as mock_abstain,
     ):
         mock_retrieve.return_value = []
@@ -34,13 +34,13 @@ def test_run_query_returns_answer_when_generation_succeeds() -> None:
     sources = [RetrievedNode(text="ctx", score=0.9)]
     with (
         patch(
-            "context_engineering_rag.app.pipeline.HybridRetriever.hybrid_retrieve"
+            "periscope.app.pipeline.HybridRetriever.hybrid_retrieve"
         ) as mock_retrieve,
         patch(
-            "context_engineering_rag.app.pipeline.Guardrails.should_abstain"
+            "periscope.app.pipeline.should_abstain"
         ) as mock_abstain,
         patch(
-            "context_engineering_rag.app.pipeline.AnswerGenerator.generate_answer"
+            "periscope.app.pipeline.AnswerGenerator.generate_answer"
         ) as mock_gen,
     ):
         # hybrid_retrieve returns NodeWithScore-like; pipeline converts to RetrievedNode
@@ -67,13 +67,13 @@ def test_run_query_returns_generation_error_metadata_on_exception() -> None:
     mock_nodes: list = []
     with (
         patch(
-            "context_engineering_rag.app.pipeline.HybridRetriever.hybrid_retrieve"
+            "periscope.app.pipeline.HybridRetriever.hybrid_retrieve"
         ) as mock_retrieve,
         patch(
-            "context_engineering_rag.app.pipeline.Guardrails.should_abstain"
+            "periscope.app.pipeline.should_abstain"
         ) as mock_abstain,
         patch(
-            "context_engineering_rag.app.pipeline.AnswerGenerator.generate_answer"
+            "periscope.app.pipeline.AnswerGenerator.generate_answer"
         ) as mock_gen,
     ):
         mock_nws = MagicMock()

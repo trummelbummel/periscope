@@ -2,7 +2,7 @@
 
 import pytest
 
-from context_engineering_rag.models import (
+from periscope.models import (
     IngestionStats,
     QueryRequest,
     QueryResponse,

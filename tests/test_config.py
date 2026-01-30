@@ -1,8 +1,8 @@
-"""Tests for config (context_engineering_rag.config)."""
+"""Tests for config (periscope.config)."""
 
 import os
 
-from context_engineering_rag import config
+from periscope import config
 
 
 def test_port_default() -> None:

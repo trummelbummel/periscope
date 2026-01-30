@@ -1,11 +1,11 @@
-"""Tests for monitoring (context_engineering_rag.monitoring.monitoring)."""
+"""Tests for monitoring (periscope.monitoring.monitoring)."""
 
 import json
 import tempfile
 from pathlib import Path
 
-from context_engineering_rag.models import IngestionStats
-from context_engineering_rag.monitoring import (
+from periscope.models import IngestionStats
+from periscope.monitoring import (
     compute_ingestion_stats,
     write_ingestion_stats,
 )

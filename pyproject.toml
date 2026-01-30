@@ -1,5 +1,5 @@
 [project]
-name = "context-engineering-rag"
+name = "periscope"
 version = "0.0.1"
 description = "This is a module implementing a rag use case with cursor."
 authors = [{ name = "Theresa Fruhwuerth", email = "theresa.fruhwuerth@gmail.com" }]
@@ -36,9 +36,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://trummelbummel.github.io/context-engineering-rag/"
-Repository = "https://github.com/trummelbummel/context-engineering-rag"
-Documentation = "https://trummelbummel.github.io/context-engineering-rag/"
+Homepage = "https://trummelbummel.github.io/periscope/"
+Repository = "https://github.com/trummelbummel/periscope"
+Documentation = "https://trummelbummel.github.io/periscope/"
 
 [dependency-groups]
 dev = [
@@ -58,7 +58,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/context_engineering_rag"]
+packages = ["src/periscope"]
 
 [tool.mypy]
 files = ["src"]

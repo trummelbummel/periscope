@@ -1,11 +1,11 @@
-"""Tests for retriever (context_engineering_rag.retriever.retriever)."""
+"""Tests for retriever (periscope.retriever.retriever)."""
 
 from unittest.mock import MagicMock, patch
 
 from llama_index.core import VectorStoreIndex
 from llama_index.core.schema import NodeWithScore, TextNode
 
-from context_engineering_rag.retriever.retriever import (
+from periscope.retriever.retriever import (
     HybridRetriever,
     _reciprocal_rank_fusion,
     _resolve_top_k,
@@ -87,9 +87,9 @@ def test_hybrid_retrieve_returns_list() -> None:
     mock_retriever.retrieve.return_value = []
     mock_index.as_retriever.return_value = mock_retriever
 
-    with patch("context_engineering_rag.retriever.retriever.set_global_embed_model"):
+    with patch("periscope.retriever.retriever.set_global_embed_model"):
         with patch(
-            "context_engineering_rag.retriever.retriever.BM25Retriever"
+            "periscope.retriever.retriever.BM25Retriever"
         ) as mock_bm25_class:
             mock_bm25 = MagicMock()
             mock_bm25.retrieve.return_value = []

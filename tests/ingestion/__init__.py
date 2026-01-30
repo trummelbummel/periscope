@@ -1,1 +1,1 @@
-"""Tests for context_engineering_rag.ingestion."""
+"""Tests for periscope.ingestion."""

@@ -1,15 +1,15 @@
-# context-engineering-rag
+# periscope
 
-[![Release](https://img.shields.io/github/v/release/trummelbummel/context-engineering-rag)](https://img.shields.io/github/v/release/trummelbummel/context-engineering-rag)
-[![Build status](https://img.shields.io/github/actions/workflow/status/trummelbummel/context-engineering-rag/main.yml?branch=main)](https://github.com/trummelbummel/context-engineering-rag/actions/workflows/main.yml?query=branch%3Amain)
-[![codecov](https://codecov.io/gh/trummelbummel/context-engineering-rag/branch/main/graph/badge.svg)](https://codecov.io/gh/trummelbummel/context-engineering-rag)
-[![Commit activity](https://img.shields.io/github/commit-activity/m/trummelbummel/context-engineering-rag)](https://img.shields.io/github/commit-activity/m/trummelbummel/context-engineering-rag)
-[![License](https://img.shields.io/github/license/trummelbummel/context-engineering-rag)](https://img.shields.io/github/license/trummelbummel/context-engineering-rag)
+[![Release](https://img.shields.io/github/v/release/trummelbummel/periscope)](https://img.shields.io/github/v/release/trummelbummel/periscope)
+[![Build status](https://img.shields.io/github/actions/workflow/status/trummelbummel/periscope/main.yml?branch=main)](https://github.com/trummelbummel/periscope/actions/workflows/main.yml?query=branch%3Amain)
+[![codecov](https://codecov.io/gh/trummelbummel/periscope/branch/main/graph/badge.svg)](https://codecov.io/gh/trummelbummel/periscope)
+[![Commit activity](https://img.shields.io/github/commit-activity/m/trummelbummel/periscope)](https://img.shields.io/github/commit-activity/m/trummelbummel/periscope)
+[![License](https://img.shields.io/github/license/trummelbummel/periscope)](https://img.shields.io/github/license/trummelbummel/periscope)
 
 This is a module implementing a rag use case with cursor.
 
-- **Github repository**: <https://github.com/trummelbummel/context-engineering-rag/>
-- **Documentation** <https://trummelbummel.github.io/context-engineering-rag/>
+- **Github repository**: <https://github.com/trummelbummel/periscope/>
+- **Documentation** <https://trummelbummel.github.io/periscope/>
 
 ## Getting started with your project
 
@@ -21,7 +21,7 @@ First, create a repository on GitHub with the same name as this project, and the
 git init -b main
 git add .
 git commit -m "init commit"
-git remote add origin git@github.com:trummelbummel/context-engineering-rag.git
+git remote add origin git@github.com:trummelbummel/periscope.git
 git push -u origin main
 ```
 

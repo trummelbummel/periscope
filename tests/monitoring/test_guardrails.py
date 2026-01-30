@@ -1,7 +1,7 @@
-"""Tests for guardrails (context_engineering_rag.monitoring.guardrails)."""
+"""Tests for guardrails (periscope.monitoring.guardrails)."""
 
-from context_engineering_rag.models import RetrievedNode
-from context_engineering_rag.monitoring import should_abstain
+from periscope.models import RetrievedNode
+from periscope.monitoring import should_abstain
 
 
 def test_should_abstain_empty_nodes() -> None:

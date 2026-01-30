@@ -1,1 +1,1 @@
-"""Tests for context_engineering_rag.app."""
+"""Tests for periscope.app."""

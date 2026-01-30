@@ -1,10 +1,10 @@
-"""Tests for table extractor (context_engineering_rag.ingestion.table_extractor)."""
+"""Tests for table extractor (periscope.ingestion.table_extractor)."""
 
 from pathlib import Path
 
 import pytest
 
-from context_engineering_rag.ingestion.table_extractor import PdfTableExtractor
+from periscope.ingestion.table_extractor import PdfTableExtractor
 from llama_index.core import Document
 
 

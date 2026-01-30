@@ -20,11 +20,15 @@ test: ## Test the code with pytest
 
 .PHONY: run-api
 run-api: ## Run the RAG API server
-	@uv run python -m context_engineering_rag.main_api
+	@uv run python -m periscope.main_api
+
+.PHONY: run-api-dev
+run-api-dev: ## Run the RAG API server with auto-reload on code changes
+	@RELOAD=1 uv run python -m periscope.main_api
 
 .PHONY: run-scraper
 run-scraper: ## Run the arXiv main scraper (fetch and download papers)
-	@uv run python -m context_engineering_rag.main_scraper
+	@uv run python -m periscope.main_scraper
 
 .PHONY: build
 build: clean-build ## Build wheel file

@@ -1,6 +1,6 @@
-"""Tests for package __init__ (context_engineering_rag)."""
+"""Tests for package __init__ (periscope)."""
 
-from context_engineering_rag import (
+from periscope import (
     API_HOST,
     CHROMA_PERSIST_DIR,
     DATA_DIR,

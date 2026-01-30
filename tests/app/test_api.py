@@ -1,8 +1,8 @@
-"""Tests for REST API (context_engineering_rag.app.api)."""
+"""Tests for REST API (periscope.app.api)."""
 
 from fastapi.testclient import TestClient
 
-from context_engineering_rag import app
+from periscope import app
 
 client = TestClient(app)
 

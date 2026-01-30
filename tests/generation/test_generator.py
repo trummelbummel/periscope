@@ -1,14 +1,14 @@
-"""Tests for generator (context_engineering_rag.generation.generator)."""
+"""Tests for generator (periscope.generation.generator)."""
 
 from unittest.mock import MagicMock
 
-from context_engineering_rag.generation.generator import (
+from periscope.generation.generator import (
     AnswerGenerator,
     format_tables_for_display,
     generate_answer,
     get_llm,
 )
-from context_engineering_rag.models import RetrievedNode
+from periscope.models import RetrievedNode
 
 
 def test_answer_generator_with_injected_llm_returns_response() -> None:

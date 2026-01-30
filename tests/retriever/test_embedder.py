@@ -1,8 +1,8 @@
-"""Tests for embedder (context_engineering_rag.retriever.embedder)."""
+"""Tests for embedder (periscope.retriever.embedder)."""
 
 from unittest.mock import patch
 
-from context_engineering_rag.retriever.embedder import (
+from periscope.retriever.embedder import (
     Embedder,
     get_embed_model,
     set_global_embed_model,

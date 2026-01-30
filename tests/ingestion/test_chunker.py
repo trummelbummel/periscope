@@ -1,8 +1,8 @@
-"""Tests for chunker (context_engineering_rag.ingestion.chunker)."""
+"""Tests for chunker (periscope.ingestion.chunker)."""
 
 from llama_index.core import Document
 
-from context_engineering_rag.ingestion import chunk_documents, get_header_aware_chunker
+from periscope.ingestion import chunk_documents, get_header_aware_chunker
 
 
 def test_get_header_aware_chunker() -> None:

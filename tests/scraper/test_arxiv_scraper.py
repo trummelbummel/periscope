@@ -1,4 +1,4 @@
-"""Tests for arXiv scraper (context_engineering_rag.scraper.arxiv_scraper)."""
+"""Tests for arXiv scraper (periscope.scraper.arxiv_scraper)."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 import httpx
 import pytest
 
-from context_engineering_rag.scraper.arxiv_scraper import ArxivPaper, ArxivScraper
+from periscope.scraper.arxiv_scraper import ArxivPaper, ArxivScraper
 
 
 # --------------------------------------------------------------------------- #

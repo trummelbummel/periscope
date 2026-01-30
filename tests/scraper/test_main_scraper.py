@@ -1,11 +1,11 @@
-"""Tests for main scraper CLI (context_engineering_rag.main_scraper)."""
+"""Tests for main scraper CLI (periscope.main_scraper)."""
 
 from __future__ import annotations
 
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from context_engineering_rag.scraper.arxiv_scraper import ArxivPaper
+from periscope.scraper.arxiv_scraper import ArxivPaper
 
 
 def test_run_calls_scraper_and_downloads(tmp_path: Path) -> None:
@@ -24,12 +24,12 @@ def test_run_calls_scraper_and_downloads(tmp_path: Path) -> None:
     mock_scraper.download_pdfs.return_value = [tmp_path / "2401.12345.pdf"]
 
     with (
-        patch("context_engineering_rag.main_scraper.ArxivScraper", return_value=mock_scraper),
-        patch("context_engineering_rag.main_scraper.ARXIV_DEFAULT_QUERY", "test query"),
-        patch("context_engineering_rag.main_scraper.ARXIV_MAX_RESULTS", 5),
-        patch("context_engineering_rag.main_scraper.ARXIV_DATA_DIR", tmp_path),
+        patch("periscope.main_scraper.ArxivScraper", return_value=mock_scraper),
+        patch("periscope.main_scraper.ARXIV_DEFAULT_QUERY", "test query"),
+        patch("periscope.main_scraper.ARXIV_MAX_RESULTS", 5),
+        patch("periscope.main_scraper.ARXIV_DATA_DIR", tmp_path),
     ):
-        from context_engineering_rag.main_scraper import run
+        from periscope.main_scraper import run
 
         run()
 
@@ -43,12 +43,12 @@ def test_run_exits_early_when_no_papers() -> None:
     mock_scraper.fetch_papers.return_value = []
 
     with (
-        patch("context_engineering_rag.main_scraper.ArxivScraper", return_value=mock_scraper),
-        patch("context_engineering_rag.main_scraper.ARXIV_DEFAULT_QUERY", "empty"),
-        patch("context_engineering_rag.main_scraper.ARXIV_MAX_RESULTS", 5),
-        patch("context_engineering_rag.main_scraper.ARXIV_DATA_DIR", Path("/tmp")),
+        patch("periscope.main_scraper.ArxivScraper", return_value=mock_scraper),
+        patch("periscope.main_scraper.ARXIV_DEFAULT_QUERY", "empty"),
+        patch("periscope.main_scraper.ARXIV_MAX_RESULTS", 5),
+        patch("periscope.main_scraper.ARXIV_DATA_DIR", Path("/tmp")),
     ):
-        from context_engineering_rag.main_scraper import run
+        from periscope.main_scraper import run
 
         run()
 
