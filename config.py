@@ -88,11 +88,6 @@ PREPROCESS_REMOVE_FOOTNOTES = _truthy(os.environ.get("PREPROCESS_REMOVE_FOOTNOTE
 PREPROCESS_REMOVE_INLINE_CITATIONS = _truthy(os.environ.get("PREPROCESS_REMOVE_INLINE_CITATIONS", "true"))
 PREPROCESS_REMOVE_REFERENCE_SECTION = _truthy(os.environ.get("PREPROCESS_REMOVE_REFERENCE_SECTION", "true"))
 
-# Optional: LLM-based performance extraction during ingestion (disabled by default).
-ENABLE_PERFORMANCE_EXTRACTION = _truthy(
-    os.environ.get("ENABLE_PERFORMANCE_EXTRACTION", "false")
-)
-
 # Guardrails: abstain from generation if best similarity score below threshold
 ENABLE_GUARDRAILS = os.environ.get("ENABLE_GUARDRAILS", "false").strip().lower() in (
     "true",

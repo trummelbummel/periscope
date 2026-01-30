@@ -21,6 +21,19 @@ logger = logging.getLogger(__name__)
 COLLECTION_NAME = "context_engineering"
 
 
+def _filter_embeddable_nodes(nodes: list[BaseNode]) -> list[BaseNode]:
+    """Keep only nodes whose content is a non-empty string so the embedder does not fail.
+
+    SentenceTransformer tokenizer raises TypeError if given None or non-string input.
+    """
+    out: list[BaseNode] = []
+    for n in nodes:
+        content = n.get_content()
+        if isinstance(content, str) and content.strip():
+            out.append(n)
+    return out
+
+
 class ChromaIndexBuilder:
     """Builds a VectorStoreIndex from nodes using ChromaDB."""
 
@@ -47,24 +60,29 @@ class ChromaIndexBuilder:
         )
         return ChromaVectorStore(chroma_collection=collection)
 
-    def build_index_from_nodes(self, nodes: list[BaseNode]) -> VectorStoreIndex:
+    def build_index_from_nodes(self, nodes: list[BaseNode]) -> tuple[VectorStoreIndex, list[BaseNode]]:
         """Build a VectorStoreIndex from nodes using ChromaDB; embeddings are stored at first creation.
 
         Nodes are embedded and inserted into the Chroma collection; PersistentClient persists
-        to disk automatically, so the vector index and embedding data are stored on first run.
+        to disk automatically. Nodes with empty or non-string content are skipped so the embedder
+        does not receive invalid input (avoids TypeError from the tokenizer).
 
         :param nodes: Chunk nodes to embed and store.
-        :return: VectorStoreIndex for retrieval.
+        :return: (VectorStoreIndex for retrieval, list of nodes that were actually embedded).
         """
+        embeddable = _filter_embeddable_nodes(nodes)
+        skipped = len(nodes) - len(embeddable)
+        if skipped:
+            logger.warning("Skipped %d nodes with empty or non-string content (embedder requires valid text)", skipped)
         set_global_embed_model()
         vector_store = self.get_chroma_vector_store()
         index = VectorStoreIndex(
-            nodes=nodes,
+            nodes=embeddable,
             vector_store=vector_store,
             show_progress=True,
         )
-        logger.info("Built index from %d nodes (embeddings stored in Chroma)", len(nodes))
-        return index
+        logger.info("Built index from %d nodes (embeddings stored in Chroma)", len(embeddable))
+        return index, embeddable
 
     @staticmethod
     def get_chroma_vector_store_default(
@@ -82,12 +100,12 @@ class ChromaIndexBuilder:
     def build_index_from_nodes_default(
         nodes: list[BaseNode],
         persist_dir: Path | None = None,
-    ) -> VectorStoreIndex:
+    ) -> tuple[VectorStoreIndex, list[BaseNode]]:
         """Build a VectorStoreIndex from nodes (convenience: create builder and run).
 
         :param nodes: Chunk nodes to embed and store.
         :param persist_dir: Chroma persist directory; default from config.
-        :return: VectorStoreIndex for retrieval.
+        :return: (VectorStoreIndex for retrieval, list of nodes that were embedded).
         """
         builder = ChromaIndexBuilder(persist_dir=persist_dir)
         return builder.build_index_from_nodes(nodes)
@@ -103,8 +121,8 @@ def get_chroma_vector_store(persist_dir: Path | None = None) -> ChromaVectorStor
 def build_index_from_nodes(
     nodes: list[BaseNode],
     persist_dir: Path | None = None,
-) -> VectorStoreIndex:
-    """Build VectorStoreIndex from nodes. Delegates to ChromaIndexBuilder."""
+) -> tuple[VectorStoreIndex, list[BaseNode]]:
+    """Build VectorStoreIndex from nodes; skips nodes with empty/non-string content. Returns (index, embeddable_nodes)."""
     return ChromaIndexBuilder.build_index_from_nodes_default(
         nodes, persist_dir=persist_dir
     )

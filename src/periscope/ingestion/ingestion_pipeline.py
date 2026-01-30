@@ -21,7 +21,6 @@ from periscope.config import (
     DATA_DIR,
     DEFAULT_DOCUMENT_EXTENSIONS,
     EMBEDDING_MODEL,
-    ENABLE_PERFORMANCE_EXTRACTION,
     INDEX_NODES_PATH,
     INGESTION_STATS_PATH,
     PREPROCESS_REMOVE_FOOTNOTES,
@@ -32,7 +31,6 @@ from periscope.config import (
 from periscope.ingestion.chunker import chunk_documents
 from periscope.ingestion.document_reader import load_documents_from_directory
 from periscope.ingestion.preprocessor import PreprocessingConfig, preprocess_documents
-from periscope.ingestion.performance_extractor import annotate_performance_improvement
 from periscope.retriever.embedder import set_global_embed_model
 from periscope.monitoring import compute_ingestion_stats, write_ingestion_stats
 from periscope.vector_store import build_index_from_nodes, persist_bm25_nodes
@@ -104,20 +102,11 @@ class IngestionPipeline:
             required_extensions=self._required_extensions,
         )
         if not docs:
-            docs = load_documents_from_directory(
-                directory=self._arxiv_data_dir,
-                required_extensions=self._required_extensions,
-            )
-        if not docs:
             raise NoDocumentsError(
                 "No documents in data directory. Add PDFs to data/ or data/arxiv/."
             )
 
         docs = preprocess_documents(docs, self._preprocessing_config)
-        # Optionally enrich documents with LLM-extracted performance improvement metadata
-        # so it propagates to chunks and can be used for filtering at query time.
-        if ENABLE_PERFORMANCE_EXTRACTION:
-            docs = annotate_performance_improvement(docs)
         nodes = chunk_documents(
             docs,
             chunk_size=self._chunk_size,
@@ -128,16 +117,17 @@ class IngestionPipeline:
         for d in docs:
             if d.metadata and "file_path" in d.metadata:
                 paths.append(str(d.metadata["file_path"]))
-        total_chars = sum(len(n.get_content()) for n in nodes)
 
-        # Build index first: embeddings are stored in Chroma at first creation; then persist BM25 nodes.
-        # Stats are computed and written only after persist so they reflect the persisted index data.
-        index = build_index_from_nodes(nodes, persist_dir=self._chroma_persist_dir)
-        persist_bm25_nodes(nodes, path=self._index_nodes_path)
+        # Build index: only nodes with valid text are embedded (avoids embedder TypeError).
+        index, successful_nodes = build_index_from_nodes(
+            nodes, persist_dir=self._chroma_persist_dir
+        )
+        persist_bm25_nodes(successful_nodes, path=self._index_nodes_path)
 
+        total_chars = sum(len(n.get_content()) for n in successful_nodes)
         stats = compute_ingestion_stats(
             document_count=len(docs),
-            chunk_count=len(nodes),
+            chunk_count=len(successful_nodes),
             total_chars=total_chars,
             paths=paths,
             embedding_model=self._embedding_model,
@@ -148,12 +138,14 @@ class IngestionPipeline:
         )
         write_ingestion_stats(stats, output_path=self._ingestion_stats_path)
 
+        skipped = len(nodes) - len(successful_nodes)
         logger.info(
-            "Ingestion complete: %d documents, %d chunks",
+            "Ingestion complete: %d documents, %d chunks indexed%s",
             len(docs),
-            len(nodes),
+            len(successful_nodes),
+            f" (%d skipped)" % skipped if skipped else "",
         )
-        return IngestionResult(index=index, nodes=nodes, stats=stats)
+        return IngestionResult(index=index, nodes=successful_nodes, stats=stats)
 
 
 def run_ingestion(

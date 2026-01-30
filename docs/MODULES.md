@@ -153,7 +153,7 @@ Documentation is derived strictly from the codebase (docstrings, `__all__`, and 
 
 - **Purpose:** Run load → preprocess → chunk → index → persist → stats in sequence; index build stores embeddings in Chroma; BM25 nodes persisted to disk; stats written only after persist (docstring).
 - **Key responsibilities:**
-  - Load documents from DATA_DIR then ARXIV_DATA_DIR via `load_documents_from_directory`; preprocess with `PreprocessingConfig`; optionally run `annotate_performance_improvement`; chunk with `chunk_documents`; call `set_global_embed_model`, then `build_index_from_nodes`, `persist_bm25_nodes`; compute and write ingestion stats via monitoring.
+  - Load documents from DATA_DIR then ARXIV_DATA_DIR via `load_documents_from_directory`; preprocess with `PreprocessingConfig`; chunk with `chunk_documents`; call `set_global_embed_model`, then `build_index_from_nodes`, `persist_bm25_nodes`; compute and write ingestion stats via monitoring.
   - Raise `NoDocumentsError` when no documents found.
 - **Important public interfaces:**
   - `NoDocumentsError` — ValueError when no documents in configured directories.
@@ -191,15 +191,6 @@ Documentation is derived strictly from the codebase (docstrings, `__all__`, and 
   - `PARAGRAPH_SEPARATOR` — `"\n\n"`.
   - `get_header_aware_chunker(chunk_size=None, chunk_overlap=None) -> SentenceSplitter`
   - `chunk_documents(documents, chunk_size=None, chunk_overlap=None) -> list[BaseNode]`
-
-### `ingestion.performance_extractor`
-
-- **Purpose:** LLM-based enrichment: extract main performance improvement from papers; store in document metadata for propagation to chunks and use as index filter at query time (docstring).
-- **Key responsibilities:**
-  - Use Hugging Face Inference API LLM to extract structured performance info (metric_name, improvement_value, improvement_unit, dataset_or_task, description) from document text; flatten into document metadata (e.g. perf_improvement_value); can disable itself after payment/credit errors to avoid repeated failures.
-- **Important public interfaces:**
-  - `PerformanceImprovementExtractor` — Constructor: model, token, llm, max_chars. Methods: `extract_from_text(text) -> dict`, etc.
-  - `annotate_performance_improvement(documents: list[Document]) -> list[Document]` — Add performance metadata to documents; return new list.
 
 ### `ingestion.table_extractor`
 

@@ -56,16 +56,13 @@ def test_run_returns_ingestion_result_when_docs_present() -> None:
         "periscope.ingestion.ingestion_pipeline.load_documents_from_directory",
         return_value=[Document(text="Some content here for chunking." * 20)],
     ), patch(
-        "periscope.ingestion.ingestion_pipeline.annotate_performance_improvement",
-        side_effect=lambda docs: docs,
-    ), patch(
         "periscope.ingestion.ingestion_pipeline.compute_ingestion_stats",
         return_value=fake_stats,
     ), patch(
         "periscope.ingestion.ingestion_pipeline.write_ingestion_stats",
     ), patch(
         "periscope.ingestion.ingestion_pipeline.build_index_from_nodes",
-        return_value=fake_index,
+        side_effect=lambda nodes, persist_dir=None: (fake_index, list(nodes)),
     ), patch(
         "periscope.ingestion.ingestion_pipeline.persist_bm25_nodes",
     ):
