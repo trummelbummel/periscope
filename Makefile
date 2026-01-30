@@ -30,6 +30,10 @@ run-api-dev: ## Run the RAG API server with auto-reload on code changes
 run-scraper: ## Run the arXiv main scraper (fetch and download papers)
 	@uv run python -m periscope.main_scraper
 
+.PHONY: run-mcp
+run-mcp: ## Run the MCP server (write SVG to Miro board)
+	@uv run python -m periscope.miro_mcp.server
+
 .PHONY: build
 build: clean-build ## Build wheel file
 	@echo "🚀 Creating wheel file"

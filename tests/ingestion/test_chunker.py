@@ -2,18 +2,11 @@
 
 from llama_index.core import Document
 
-from periscope.ingestion import chunk_documents, get_header_aware_chunker
-
-
-def test_get_header_aware_chunker() -> None:
-    """get_header_aware_chunker returns SentenceSplitter with expected params."""
-    parser = get_header_aware_chunker(chunk_size=100, chunk_overlap=20)
-    assert parser.chunk_size == 100
-    assert parser.chunk_overlap == 20
+from periscope.ingestion import chunk_documents
 
 
 def test_chunk_documents_produces_nodes() -> None:
-    """chunk_documents splits documents into nodes."""
+    """chunk_documents splits documents into nodes for indexing."""
     docs = [
         Document(text="First sentence. Second sentence. Third sentence. " * 30),
     ]

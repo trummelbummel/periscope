@@ -1,18 +1,18 @@
 """Answer generation: generate responses using LLM based on retrieved context.
 
-Per PRD: GENERATION_MODEL = GPT-5, GENERATION_PROMPT = 'Answer Question based on Context'.
-Uses OpenAI-compatible API. Error handling for external API calls.
+Per PRD: GENERATION_MODEL, GENERATION_PROMPT for answer-from-context.
+Uses Hugging Face Inference API (serverless). Error handling for model calls.
 """
 
 import logging
+from typing import Any
 
-from llama_index.llms.openai import OpenAI
-from openai import OpenAIError
+from llama_index.llms.huggingface_api import HuggingFaceInferenceAPI
 
 from periscope.config import (
     GENERATION_MODEL,
     GENERATION_PROMPT,
-    OPENAI_API_KEY,
+    HUGGINGFACE_TOKEN,
 )
 from periscope.models import RetrievedNode
 
@@ -51,19 +51,19 @@ class AnswerGenerator:
     def __init__(
         self,
         model: str | None = None,
-        api_key: str | None = None,
+        token: str | None = None,
         prompt_template: str | None = None,
-        llm: OpenAI | None = None,
+        llm: Any = None,
     ) -> None:
-        """Initialize with optional model, api_key, prompt; or inject LLM.
+        """Initialize with optional model, token, prompt; or inject LLM.
 
-        :param model: Model name; default from config.
-        :param api_key: OpenAI API key; default from config.
+        :param model: HuggingFace model id for Inference API; default from config.
+        :param token: HuggingFace token for Inference API; default from config.
         :param prompt_template: Template with {context_str} and {query_str}; default from config.
-        :param llm: Injected LLM; if None, created from model/api_key.
+        :param llm: Injected LLM (e.g. HuggingFaceInferenceAPI); if None, created from model/token.
         """
         self._model = model if model is not None else GENERATION_MODEL
-        self._api_key = api_key if api_key is not None else OPENAI_API_KEY
+        self._token = token if token is not None else HUGGINGFACE_TOKEN
         self._prompt_template = (
             prompt_template
             if prompt_template is not None
@@ -94,15 +94,15 @@ class AnswerGenerator:
             parts.append(block)
         return "\n\n".join(parts)
 
-    def _get_llm(self) -> OpenAI:
-        """Return LLM instance; use injected or create from config."""
+    def _get_llm(self) -> HuggingFaceInferenceAPI:
+        """Return LLM instance; use injected or create from config (Hugging Face Inference API)."""
         if self._llm is not None:
             return self._llm
-        if not self._api_key:
-            logger.warning("OPENAI_API_KEY not set; generation may fail")
-        return OpenAI(
-            model=self._model,
-            api_key=self._api_key or "sk-placeholder",
+        if not self._token or not self._token.strip():
+            logger.warning("HUGGINGFACE_TOKEN not set; Inference API may rate-limit or reject")
+        return HuggingFaceInferenceAPI(
+            model_name=self._model,
+            token=self._token.strip() if self._token and self._token.strip() else None,
         )
 
     def generate_answer(
@@ -115,7 +115,6 @@ class AnswerGenerator:
         :param query: User question.
         :param context_nodes: Retrieved chunks (supporting evidence).
         :return: Generated answer text.
-        :raises OpenAIError: On API failure (caller should handle).
         """
         context_str = AnswerGenerator._build_context_str(context_nodes)
         prompt = self._prompt_template.format(
@@ -126,22 +125,22 @@ class AnswerGenerator:
         try:
             response = llm.complete(prompt)
             return response.text if response else ""
-        except OpenAIError as e:
-            logger.exception("OpenAI API error during generation: %s", e)
+        except Exception as e:
+            logger.exception("Generation error: %s", e)
             raise
 
     @staticmethod
     def get_llm(
         model: str | None = None,
-        api_key: str | None = None,
-    ) -> OpenAI:
-        """Return OpenAI LLM for generation.
+        token: str | None = None,
+    ) -> HuggingFaceInferenceAPI:
+        """Return Hugging Face Inference API LLM for generation.
 
         :param model: Model name; default from config.
-        :param api_key: OpenAI API key; default from config.
-        :return: OpenAI instance.
+        :param token: HuggingFace token; default from config.
+        :return: HuggingFaceInferenceAPI instance.
         """
-        generator = AnswerGenerator(model=model, api_key=api_key)
+        generator = AnswerGenerator(model=model, token=token)
         return generator._get_llm()
 
     @staticmethod
@@ -149,7 +148,7 @@ class AnswerGenerator:
         query: str,
         context_nodes: list[RetrievedNode],
         prompt_template: str | None = None,
-        llm: OpenAI | None = None,
+        llm: Any = None,
     ) -> str:
         """Generate answer (convenience: create default generator and run).
 
@@ -158,7 +157,6 @@ class AnswerGenerator:
         :param prompt_template: Optional template with {context_str} and {query_str}.
         :param llm: Optional LLM instance; default from get_llm().
         :return: Generated answer text.
-        :raises OpenAIError: On API failure (caller should handle).
         """
         generator = AnswerGenerator(
             prompt_template=prompt_template,
@@ -169,17 +167,17 @@ class AnswerGenerator:
 
 def get_llm(
     model: str | None = None,
-    api_key: str | None = None,
-) -> OpenAI:
-    """Return OpenAI LLM for generation. Delegates to AnswerGenerator."""
-    return AnswerGenerator.get_llm(model=model, api_key=api_key)
+    token: str | None = None,
+) -> HuggingFaceInferenceAPI:
+    """Return Hugging Face Inference API LLM for generation. Delegates to AnswerGenerator."""
+    return AnswerGenerator.get_llm(model=model, token=token)
 
 
 def generate_answer(
     query: str,
     context_nodes: list[RetrievedNode],
     prompt_template: str | None = None,
-    llm: OpenAI | None = None,
+    llm: Any = None,
 ) -> str:
     """Generate answer from query and context. Delegates to AnswerGenerator."""
     return AnswerGenerator.generate_answer_with_options(

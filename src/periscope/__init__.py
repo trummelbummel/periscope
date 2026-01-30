@@ -1,26 +1,15 @@
-"""Context Engineering RAG: retrieval and generation for context engineering papers."""
+"""Context Engineering RAG package.
 
-from periscope.app.api import app
-from periscope.config import (
-    API_HOST,
-    CHROMA_PERSIST_DIR,
-    DATA_DIR,
-    EMBEDDING_MODEL,
-    GENERATION_MODEL,
-    PORT,
-    TOP_K,
-)
+This module keeps imports lightweight so that `import periscope` works in tests
+without pulling in the API server. It also exposes a `config` attribute that
+re-exports the root-level config module via `periscope.config`.
+"""
+
+from periscope import config  # type: ignore[import]  # re-export of root config via stub
 from periscope.models import QueryRequest, QueryResponse
 
 __all__ = [
-    "app",
-    "API_HOST",
-    "PORT",
-    "DATA_DIR",
-    "CHROMA_PERSIST_DIR",
-    "EMBEDDING_MODEL",
-    "GENERATION_MODEL",
-    "TOP_K",
+    "config",
     "QueryRequest",
     "QueryResponse",
 ]

@@ -11,6 +11,14 @@ class QueryRequest(BaseModel):
 
     query: str = Field(..., min_length=1, description="User question")
     top_k: int | None = Field(default=None, ge=1, le=50, description="Max retrieval count")
+    min_perf_improvement: float | None = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Optional minimum main performance improvement required for retrieved chunks "
+            "(e.g. percentage-point gain over baselines)."
+        ),
+    )
 
 
 class RetrievedNode(BaseModel):
@@ -48,6 +56,22 @@ class IngestionStats(BaseModel):
     total_chars: int = Field(..., ge=0)
     avg_chunk_size: float = Field(..., ge=0)
     paths: list[str] = Field(default_factory=list)
+    embedding_model: str = Field(
+        default="",
+        description="HuggingFace model id used for embeddings during ingestion",
+    )
+    preprocessing_config: dict = Field(
+        default_factory=dict,
+        description="Preprocessing options used during ingestion (remove_tables, remove_footnotes, etc.)",
+    )
+    chunk_size: int = Field(
+        default=0,
+        description="CHUNK_SIZE used during ingestion; 0 means not recorded (legacy).",
+    )
+    chunk_overlap: int = Field(
+        default=0,
+        description="CHUNK_OVERLAP used during ingestion; 0 means not recorded (legacy).",
+    )
 
 
 class ArxivResult(BaseModel):

@@ -10,6 +10,7 @@ import time
 from llama_index.core import VectorStoreIndex
 from llama_index.core.schema import BaseNode, NodeWithScore
 
+from periscope.config import ENABLE_GUARDRAILS
 from periscope.generation.generator import (
     AnswerGenerator,
     format_tables_for_display,
@@ -45,6 +46,7 @@ class Pipeline:
         vector_index: VectorStoreIndex,
         bm25_nodes: list[BaseNode],
         top_k: int | None = None,
+        min_perf_improvement: float | None = None,
     ) -> QueryResponse:
         """Run retrieval + optional generation with guardrails.
 
@@ -64,6 +66,17 @@ class Pipeline:
         sources = [
             Pipeline._node_with_score_to_retrieved_node(nws) for nws in retrieved
         ]
+
+        # Optional filter: require a minimum main performance improvement as extracted
+        # during ingestion (perf_improvement_value in node metadata).
+        if min_perf_improvement is not None:
+            sources = [
+                s
+                for s in sources
+                if isinstance(s.metadata.get("perf_improvement_value"), (int, float))
+                and s.metadata.get("perf_improvement_value") is not None
+                and float(s.metadata["perf_improvement_value"]) >= min_perf_improvement
+            ]
         retrieval_time = time.perf_counter() - start
 
         metadata: dict = {
@@ -71,7 +84,7 @@ class Pipeline:
             "num_sources": len(sources),
         }
 
-        if should_abstain(sources):
+        if ENABLE_GUARDRAILS and should_abstain(sources):
             return QueryResponse(
                 answer="",
                 sources=sources,
@@ -116,6 +129,7 @@ def run_query(
     vector_index: VectorStoreIndex,
     bm25_nodes: list[BaseNode],
     top_k: int | None = None,
+    min_perf_improvement: float | None = None,
 ) -> QueryResponse:
     """Run retrieval and generation. Delegates to Pipeline."""
     return Pipeline.run_query(
@@ -123,4 +137,5 @@ def run_query(
         vector_index=vector_index,
         bm25_nodes=bm25_nodes,
         top_k=top_k,
+        min_perf_improvement=min_perf_improvement,
     )

@@ -13,30 +13,24 @@ from fastapi.staticfiles import StaticFiles
 
 from periscope.config import (
     API_HOST,
-    ARXIV_DATA_DIR,
     CHROMA_PERSIST_DIR,
-    DATA_DIR,
+    CHUNK_OVERLAP,
+    CHUNK_SIZE,
+    EMBEDDING_MODEL,
     INDEX_NODES_PATH,
+    INGESTION_STATS_PATH,
     PORT,
+    PREPROCESS_REMOVE_FOOTNOTES,
+    PREPROCESS_REMOVE_INLINE_CITATIONS,
+    PREPROCESS_REMOVE_REFERENCE_SECTION,
+    PREPROCESS_REMOVE_TABLES,
     TOP_K,
 )
-from periscope.ingestion import (
-    chunk_documents,
-    load_documents_from_directory,
-)
-from periscope.vector_store import (
-    build_index_from_nodes,
-    load_bm25_nodes,
-    load_index_from_chroma,
-    persist_bm25_nodes,
-)
-from periscope.embedder import set_global_embed_model
-from periscope.models import QueryRequest, QueryResponse
-from periscope.monitoring import (
-    compute_ingestion_stats,
-    write_ingestion_stats as persist_ingestion_stats,
-)
+from periscope.ingestion import IngestionPipeline, NoDocumentsError
+from periscope.models import IngestionStats, QueryRequest, QueryResponse
+from periscope.monitoring import read_ingestion_stats
 from periscope.pipeline import run_query
+from periscope.vector_store import load_bm25_nodes, load_index_from_chroma
 
 logger = logging.getLogger(__name__)
 
@@ -69,8 +63,37 @@ _vector_index = None
 _bm25_nodes = None
 
 
+def _current_pipeline_config() -> dict:
+    """Current pipeline config fingerprint for comparison with persisted stats."""
+    return {
+        "embedding_model": EMBEDDING_MODEL,
+        "chunk_size": CHUNK_SIZE,
+        "chunk_overlap": CHUNK_OVERLAP,
+        "preprocessing_config": {
+            "remove_tables": PREPROCESS_REMOVE_TABLES,
+            "remove_footnotes": PREPROCESS_REMOVE_FOOTNOTES,
+            "remove_inline_citations": PREPROCESS_REMOVE_INLINE_CITATIONS,
+            "remove_reference_section": PREPROCESS_REMOVE_REFERENCE_SECTION,
+        },
+    }
+
+
+def _pipeline_config_matches(stats: IngestionStats) -> bool:
+    """True if persisted stats match current pipeline config (no re-ingest needed)."""
+    current = _current_pipeline_config()
+    if stats.embedding_model != current["embedding_model"]:
+        return False
+    if stats.chunk_size != 0 and stats.chunk_size != current["chunk_size"]:
+        return False
+    if stats.chunk_overlap != 0 and stats.chunk_overlap != current["chunk_overlap"]:
+        return False
+    if stats.preprocessing_config != current["preprocessing_config"]:
+        return False
+    return True
+
+
 def _ensure_index() -> tuple:
-    """Load or build index: try persisted Chroma + BM25 nodes first, else ingest and persist."""
+    """Load or build index: try persisted Chroma + BM25 nodes first if config matches, else ingest and persist."""
     global _vector_index
     global _bm25_nodes
     if _vector_index is not None and _bm25_nodes is not None:
@@ -79,37 +102,29 @@ def _ensure_index() -> tuple:
     vector_index = load_index_from_chroma(CHROMA_PERSIST_DIR)
     bm25_nodes = load_bm25_nodes(INDEX_NODES_PATH)
     if vector_index is not None and bm25_nodes is not None and len(bm25_nodes) > 0:
-        logger.info("Using persisted index (Chroma + %d BM25 nodes)", len(bm25_nodes))
-        _vector_index = vector_index
-        _bm25_nodes = bm25_nodes
-        return _vector_index, _bm25_nodes
-    # Full ingestion from data directory
-    logger.info("Building index from data directory")
-    set_global_embed_model()
-    docs = load_documents_from_directory(DATA_DIR)
-    if not docs:
-        docs = load_documents_from_directory(ARXIV_DATA_DIR)
-    if not docs:
+        persisted_stats = read_ingestion_stats(INGESTION_STATS_PATH)
+        if persisted_stats is not None and _pipeline_config_matches(persisted_stats):
+            logger.info("Using persisted index (Chroma + %d BM25 nodes)", len(bm25_nodes))
+            _vector_index = vector_index
+            _bm25_nodes = bm25_nodes
+            return _vector_index, _bm25_nodes
+        logger.info(
+            "Pipeline config changed or no persisted stats; re-ingesting (embedding_model=%s, chunk_size=%s, preprocessing=%s)",
+            EMBEDDING_MODEL,
+            CHUNK_SIZE,
+            _current_pipeline_config().get("preprocessing_config"),
+        )
+    # Full ingestion via pipeline (load → preprocess → chunk → stats → index → persist)
+    try:
+        pipeline = IngestionPipeline()
+        result = pipeline.run()
+    except NoDocumentsError as e:
         raise HTTPException(
             status_code=503,
-            detail="No documents in data directory. Run ingest first or add PDFs to data/ or data/arxiv/.",
-        )
-    nodes = chunk_documents(docs)
-    total_chars = sum(len(n.get_content()) for n in nodes)
-    paths = []
-    for d in docs:
-        if d.metadata and "file_path" in d.metadata:
-            paths.append(str(d.metadata["file_path"]))
-    stats = compute_ingestion_stats(
-        document_count=len(docs),
-        chunk_count=len(nodes),
-        total_chars=total_chars,
-        paths=paths,
-    )
-    persist_ingestion_stats(stats)
-    _vector_index = build_index_from_nodes(nodes)
-    _bm25_nodes = nodes
-    persist_bm25_nodes(nodes, INDEX_NODES_PATH)
+            detail=str(e),
+        ) from e
+    _vector_index = result.index
+    _bm25_nodes = result.nodes
     return _vector_index, _bm25_nodes
 
 
@@ -140,6 +155,7 @@ def query(request: QueryRequest) -> QueryResponse:
         vector_index=vector_index,
         bm25_nodes=bm25_nodes,
         top_k=top_k,
+        min_perf_improvement=request.min_perf_improvement,
     )
 
 

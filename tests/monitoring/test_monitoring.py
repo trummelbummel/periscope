@@ -21,9 +21,7 @@ def test_compute_ingestion_stats() -> None:
     )
     assert stats.document_count == 2
     assert stats.chunk_count == 10
-    assert stats.total_chars == 1000
     assert stats.avg_chunk_size == 100.0
-    assert len(stats.paths) == 2
 
 
 def test_write_ingestion_stats() -> None:

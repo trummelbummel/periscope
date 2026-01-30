@@ -35,7 +35,31 @@ make install
 
 This will also generate your `uv.lock` file
 
-### 3. Run the pre-commit hooks
+### 3. Ingest arXiv papers (one-time)
+
+Before you can query the RAG API, you need to download and index a small corpus
+of arXiv papers used as context. This is done via the bundled scraper:
+
+```bash
+make run-scraper
+```
+
+This command fetches relevant arXiv PDFs into the `data/arxiv/` folder. After
+that, you can run ingestion (or let the API trigger it on first query).
+
+### 4. Run the API
+
+To start the RAG HTTP API (including the minimal UI under `/ui`), run:
+
+```bash
+make run-api
+```
+
+This will launch the FastAPI server on the configured `PORT` (default `8000`).
+Open `http://localhost:8000/ui/` in your browser to use the UI, or `http://localhost:8000/docs`
+for the interactive OpenAPI docs.
+
+### 5. Run the pre-commit hooks
 
 Initially, the CI/CD pipeline might be failing due to formatting issues. To resolve those run:
 
@@ -43,7 +67,7 @@ Initially, the CI/CD pipeline might be failing due to formatting issues. To reso
 uv run pre-commit run -a
 ```
 
-### 4. Commit the changes
+### 6. Commit the changes
 
 Lastly, commit the changes made by the two steps above to your repository.
 

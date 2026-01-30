@@ -45,7 +45,10 @@ class ChromaIndexBuilder:
         return ChromaVectorStore(chroma_collection=collection)
 
     def build_index_from_nodes(self, nodes: list[BaseNode]) -> VectorStoreIndex:
-        """Build a VectorStoreIndex from nodes using ChromaDB.
+        """Build a VectorStoreIndex from nodes using ChromaDB; embeddings are stored at first creation.
+
+        Nodes are embedded and inserted into the Chroma collection; PersistentClient persists
+        to disk automatically, so the vector index and embedding data are stored on first run.
 
         :param nodes: Chunk nodes to embed and store.
         :return: VectorStoreIndex for retrieval.
@@ -57,7 +60,7 @@ class ChromaIndexBuilder:
             vector_store=vector_store,
             show_progress=True,
         )
-        logger.info("Built index from %d nodes", len(nodes))
+        logger.info("Built index from %d nodes (embeddings stored in Chroma)", len(nodes))
         return index
 
     @staticmethod

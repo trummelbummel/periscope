@@ -1,7 +1,8 @@
-"""Configuration for the context engineering RAG service.
+"""Configuration for the periscope RAG service.
 
 All paths, models, ports, and API keys are configurable via environment
 variables or defaults. Load with python-dotenv for .env support.
+Lives at project root (next to pyproject.toml).
 """
 
 import os
@@ -17,9 +18,15 @@ _PROJECT_ROOT = Path(__file__).resolve().parent
 # API server
 PORT = int(os.environ.get("PORT", "8000"))
 API_HOST = os.environ.get("API_HOST", "0.0.0.0")
+# Reload when code changes (dev); set RELOAD=1 or API_RELOAD=1
+API_RELOAD = os.environ.get("API_RELOAD", os.environ.get("RELOAD", "0")).strip() in (
+    "1",
+    "true",
+    "yes",
+)
 
 # Data paths (defined before arXiv paths that may use DATA_DIR)
-DATA_DIR: Path = Path(os.environ.get("DATA_DIR", str(_PROJECT_ROOT / "data/arxiv")))
+DATA_DIR: Path = Path(os.environ.get("DATA_DIR", str(_PROJECT_ROOT / "data/arxiv/test")))
 ARXIV_DATA_DIR: Path = Path(
     os.environ.get("ARXIV_DATA_DIR", str(DATA_DIR / "arxiv"))
 )
@@ -41,28 +48,22 @@ INDEX_NODES_PATH: Path = Path(
     os.environ.get("INDEX_NODES_PATH", str(CHROMA_PERSIST_DIR / "bm25_nodes.pkl"))
 )
 
-# Embedding model for vector index (HuggingFace model id; set EMBED_TRUST_REMOTE_CODE for custom models)
-EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "Qwen/Qwen3-Embedding-8B")
-EMBED_TRUST_REMOTE_CODE = os.environ.get("EMBED_TRUST_REMOTE_CODE", "true").lower() in ("true", "1", "yes")
-# Use Hugging Face Inference API (serverless free tier) for embeddings instead of local model
-EMBED_USE_INFERENCE_API = os.environ.get("EMBED_USE_INFERENCE_API", "false").lower() in ("true", "1", "yes")
-# Model for serverless embedding when EMBED_USE_INFERENCE_API=true (good for scientific/CS text on free tier)
-EMBED_INFERENCE_API_MODEL = os.environ.get(
-    "EMBED_INFERENCE_API_MODEL", "BAAI/bge-small-en-v1.5"
-)
+# Embedding model for vector index (HuggingFace model id)
+EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "intfloat/e5-small-v2")
 
-# Generation (LLM) – Hugging Face Inference API (serverless)
+# Generation (LLM) – Hugging Face Inference API (serverless) model for answer generation.
+# Default is a small chat model hosted on Hugging Face Inference API; override via GENERATION_MODEL env var if needed.
+# NOTE: Repo IDs used here must be plain Hugging Face model IDs without provider suffixes
+# (no ':hf-inference'), since the HuggingFaceInferenceAPI wrapper manages providers separately.
 GENERATION_MODEL = os.environ.get(
-    "GENERATION_MODEL", "microsoft/tapex-base-finetuned-wikisql"
+    "GENERATION_MODEL",
+    "HuggingFaceTB/SmolLM3-3B",
 )
 GENERATION_PROMPT = os.environ.get(
     "GENERATION_PROMPT",
     "Answer the question based only on the following context.\n\nContext:\n{context_str}\n\nQuestion: {query_str}\n\nAnswer:",
 )
-# Hugging Face token for Inference API (required for gated models like Llama)
-HUGGINGFACE_TOKEN = os.environ.get("HUGGINGFACE_TOKEN", "") or os.environ.get(
-    "HF_TOKEN", ""
-)
+HUGGINGFACE_TOKEN = os.environ.get("HUGGINGFACE_TOKEN", "") or os.environ.get("HF_TOKEN", "")
 
 # Retrieval
 TOP_K = int(os.environ.get("TOP_K", "10"))
@@ -71,8 +72,22 @@ TOP_K = int(os.environ.get("TOP_K", "10"))
 CHUNK_SIZE = int(os.environ.get("CHUNK_SIZE", "512"))
 CHUNK_OVERLAP = int(os.environ.get("CHUNK_OVERLAP", "50"))
 
+# Preprocessing during ingestion: remove noise (tables, footnotes, citations, references)
+def _truthy(s: str) -> bool:
+    return (s or "").strip().lower() in ("1", "true", "yes")
+
+PREPROCESS_REMOVE_TABLES = _truthy(os.environ.get("PREPROCESS_REMOVE_TABLES", "true"))
+PREPROCESS_REMOVE_FOOTNOTES = _truthy(os.environ.get("PREPROCESS_REMOVE_FOOTNOTES", "true"))
+PREPROCESS_REMOVE_INLINE_CITATIONS = _truthy(os.environ.get("PREPROCESS_REMOVE_INLINE_CITATIONS", "true"))
+PREPROCESS_REMOVE_REFERENCE_SECTION = _truthy(os.environ.get("PREPROCESS_REMOVE_REFERENCE_SECTION", "true"))
+
+# Optional: LLM-based performance extraction during ingestion (disabled by default).
+ENABLE_PERFORMANCE_EXTRACTION = _truthy(
+    os.environ.get("ENABLE_PERFORMANCE_EXTRACTION", "false")
+)
+
 # Guardrails: abstain from generation if best similarity score below threshold
-ENABLE_GUARDRAILS = os.environ.get("ENABLE_GUARDRAILS", "true").lower() in (
+ENABLE_GUARDRAILS = os.environ.get("ENABLE_GUARDRAILS", "false").strip().lower() in (
     "true",
     "1",
     "yes",
@@ -81,5 +96,18 @@ SIMILARITY_THRESHOLD = float(os.environ.get("SIMILARITY_THRESHOLD", "0.5"))
 
 # Monitoring: where to write ingestion statistics
 INGESTION_STATS_PATH: Path = Path(
-    os.environ.get("INGESTION_STATS_PATH", str(_PROJECT_ROOT / "ingestion_stats.json"))
+    os.environ.get(
+        "INGESTION_STATS_PATH",
+        str(_PROJECT_ROOT / "monitoring" / "data" / "ingestion_stats.json"),
+    )
 )
+
+# Miro board (MCP server: write SVG to board)
+MIRO_ACCESS_TOKEN: str = os.environ.get("MIRO_ACCESS_TOKEN", "")
+MIRO_BOARD_ID: str = os.environ.get("MIRO_BOARD_ID", "")
+MIRO_API_BASE_URL: str = os.environ.get(
+    "MIRO_API_BASE_URL",
+    "https://api.miro.com/v2",
+)
+MIRO_IMAGE_POSITION_X: float = float(os.environ.get("MIRO_IMAGE_POSITION_X", "0.0"))
+MIRO_IMAGE_POSITION_Y: float = float(os.environ.get("MIRO_IMAGE_POSITION_Y", "0.0"))
