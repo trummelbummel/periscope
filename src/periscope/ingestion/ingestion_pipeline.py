@@ -94,13 +94,18 @@ class IngestionPipeline:
         :return: IngestionResult with index, nodes, and stats.
         :raises NoDocumentsError: If no documents are found in data_dir or arxiv_data_dir.
         """
-        logger.info("Starting ingestion pipeline (embedding model: %s)", self._embedding_model)
+        logger.info(
+            "Starting ingestion pipeline data_dir=%s embedding_model=%s",
+            self._data_dir,
+            self._embedding_model,
+        )
         set_global_embed_model()
 
         docs = load_documents_from_directory(
             directory=self._data_dir,
             required_extensions=self._required_extensions,
         )
+        logger.info("Loaded %d documents from %s", len(docs), self._data_dir)
         if not docs:
             raise NoDocumentsError(
                 "No documents in data directory. Add PDFs to data/ or data/arxiv/."
@@ -118,9 +123,19 @@ class IngestionPipeline:
             if d.metadata and "file_path" in d.metadata:
                 paths.append(str(d.metadata["file_path"]))
 
+        logger.info(
+            "Building index from %d nodes persist_dir=%s",
+            len(nodes),
+            self._chroma_persist_dir,
+        )
         # Build index: only nodes with valid text are embedded (avoids embedder TypeError).
         index, successful_nodes = build_index_from_nodes(
             nodes, persist_dir=self._chroma_persist_dir
+        )
+        logger.info(
+            "Index built: %d nodes embedded (Chroma), persisting BM25 nodes to %s",
+            len(successful_nodes),
+            self._index_nodes_path,
         )
         persist_bm25_nodes(successful_nodes, path=self._index_nodes_path)
 
@@ -137,6 +152,7 @@ class IngestionPipeline:
             index_version=None,
         )
         write_ingestion_stats(stats, output_path=self._ingestion_stats_path)
+        logger.info("Wrote ingestion stats to %s", self._ingestion_stats_path)
 
         skipped = len(nodes) - len(successful_nodes)
         logger.info(

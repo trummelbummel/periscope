@@ -3,6 +3,7 @@
 from llama_index.core import Document
 
 from periscope.ingestion import chunk_documents
+from periscope.ingestion.chunker import _metadata_byte_size, _trim_document_metadata
 
 
 def test_chunk_documents_produces_nodes() -> None:
@@ -10,7 +11,34 @@ def test_chunk_documents_produces_nodes() -> None:
     docs = [
         Document(text="First sentence. Second sentence. Third sentence. " * 30),
     ]
-    nodes = chunk_documents(docs, chunk_size=100, chunk_overlap=10)
+    chunk_size = 100
+    chunk_overlap = 10
+    nodes = chunk_documents(docs, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     assert len(nodes) >= 1
+    # SentenceSplitter keeps sentence boundaries, so chunks may exceed chunk_size slightly
+    max_chunk = chunk_size + 350
     for node in nodes:
-        assert len(node.get_content()) > 0
+        assert len(node.get_content()) <= max_chunk
+
+
+def test_chunk_documents_handles_large_metadata() -> None:
+    """chunk_documents trims metadata so SentenceSplitter does not raise (metadata > chunk_size)."""
+    huge_tables = ["x" * 2000]
+    doc = Document(
+        text="Short text.",
+        metadata={"file_path": "/a.pdf", "headers": ["H1"], "tables": huge_tables},
+    )
+    assert _metadata_byte_size(doc.metadata) > 512
+    nodes = chunk_documents([doc], chunk_size=512, chunk_overlap=10)
+    assert len(nodes) >= 1
+
+
+def test_trim_document_metadata_caps_size() -> None:
+    """_trim_document_metadata returns metadata under max size."""
+    doc = Document(
+        text="x",
+        metadata={"file_path": "/a.pdf", "headers": ["H"], "tables": ["t" * 3000]},
+    )
+    trimmed = _trim_document_metadata(doc, max_metadata_size=400)
+    assert _metadata_byte_size(trimmed.metadata) <= 400
+    assert trimmed.metadata.get("file_path") == "/a.pdf"

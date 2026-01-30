@@ -41,7 +41,6 @@ Configuration is read from environment variables; you can use a `.env` file in t
 - `ENABLE_GUARDRAILS`, `SIMILARITY_THRESHOLD` – When to abstain from answering
 - `INDEX_VERSION` – Version string written to ingestion stats, retrieval evaluation JSON, and Chroma collection metadata (default `1`)
 - `RETRIEVAL_EXPERIMENT_MAX_NODES`, `RETRIEVAL_EXPERIMENT_NUM_QUESTIONS_PER_CHUNK` – Max nodes and questions per chunk for `make run-monitoring` retrieval evaluation (defaults: `50`, `1`)
-- `MIRO_ACCESS_TOKEN`, `MIRO_BOARD_ID` – For the Miro MCP server
 
 ## Getting started with your project
 

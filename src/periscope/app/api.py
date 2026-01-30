@@ -56,6 +56,7 @@ if _UI_DIR.exists():
 @app.get("/", response_model=None, include_in_schema=False)
 def root() -> RedirectResponse:
     """Redirect root to the UI."""
+    logger.debug("GET / -> redirect /ui/")
     return RedirectResponse(url="/ui/", status_code=302)
 
 # In-memory state: index and nodes for BM25 (loaded on first ingest/query)
@@ -142,24 +143,30 @@ def _ensure_index_or_raise(status_code: int = 503, log_message: str = "Failed to
 @app.get("/health")
 def health() -> dict:
     """Health check."""
+    logger.info("GET /health")
     return {"status": "ok"}
 
 
 @app.post("/query", response_model=QueryResponse)
 def query(request: QueryRequest) -> QueryResponse:
     """Run retrieval and generation for a user question."""
-    vector_index, bm25_nodes = _ensure_index_or_raise(503, "Failed to load index: %s")
     top_k = request.top_k if request.top_k is not None else TOP_K
-    return run_query(
+    logger.info("POST /query query=%r top_k=%s", request.query, top_k)
+    vector_index, bm25_nodes = _ensure_index_or_raise(503, "Failed to load index: %s")
+    response = run_query(
         query=request.query,
         vector_index=vector_index,
         bm25_nodes=bm25_nodes,
         top_k=top_k,
     )
+    logger.info("POST /query completed query=%r answer_len=%d", request.query, len(response.answer))
+    return response
 
 
 @app.post("/ingest")
 def ingest() -> dict:
     """Trigger ingestion: load PDFs from data dir, chunk, embed, store. Returns stats."""
+    logger.info("POST /ingest")
     _ensure_index_or_raise(500, "Ingest failed: %s")
+    logger.info("POST /ingest completed index built")
     return {"status": "ok", "message": "Index built from data directory"}

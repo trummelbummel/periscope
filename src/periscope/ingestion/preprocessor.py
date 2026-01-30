@@ -128,6 +128,16 @@ def preprocess_documents(
     :param config: Preprocessing options.
     :return: New list of Documents with cleaned text; metadata preserved.
     """
+    if documents:
+        logger.info(
+            "Preprocessing %d documents (remove_tables=%s, remove_footnotes=%s, "
+            "remove_inline_citations=%s, remove_reference_section=%s)",
+            len(documents),
+            config.remove_tables,
+            config.remove_footnotes,
+            config.remove_inline_citations,
+            config.remove_reference_section,
+        )
     result: list[Document] = []
     for doc in documents:
         cleaned = clean_text(doc.text, config)
@@ -137,13 +147,5 @@ def preprocess_documents(
         )
         result.append(new_doc)
     if documents:
-        logger.info(
-            "Preprocessed %d documents (remove_tables=%s, remove_footnotes=%s, "
-            "remove_inline_citations=%s, remove_reference_section=%s)",
-            len(documents),
-            config.remove_tables,
-            config.remove_footnotes,
-            config.remove_inline_citations,
-            config.remove_reference_section,
-        )
+        logger.info("Preprocessed %d documents", len(documents))
     return result

@@ -25,11 +25,12 @@ API_RELOAD = os.environ.get("API_RELOAD", os.environ.get("RELOAD", "0")).strip()
     "yes",
 )
 
-# Data paths (defined before arXiv paths that may use DATA_DIR)
-DATA_DIR: Path = Path(os.environ.get("DATA_DIR", str(_PROJECT_ROOT / "data/arxiv")))
+
 ARXIV_DATA_DIR: Path = Path(
-    os.environ.get("ARXIV_DATA_DIR", str(DATA_DIR / "arxiv"))
+    os.environ.get("ARXIV_DATA_DIR", str(_PROJECT_ROOT / "data/arxiv"))
 )
+# Data paths (defined before arXiv paths that may use DATA_DIR)
+DATA_DIR: Path = Path(os.environ.get("DATA_DIR", str(_PROJECT_ROOT / "data/test")))
 
 # arXiv scraper configuration
 ARXIV_DEFAULT_QUERY = 'ti:"prompt optimization" AND abs:"large language model"'
@@ -40,6 +41,10 @@ ARXIV_USER_AGENT = "rag-arxiv-scraper (mailto:theresa.fruhwuerth@gmail.com)"
 
 # Document loading: default file extensions for directory reader
 DEFAULT_DOCUMENT_EXTENSIONS: list[str] = [".pdf"]
+# Parsed PDF cache: store extracted text, headers, tables so parsing does not have to be repeated
+PARSED_DIR: Path = Path(
+    os.environ.get("PARSED_DIR", str(_PROJECT_ROOT / "parsed"))
+)
 CHROMA_PERSIST_DIR: Path = Path(
     os.environ.get("CHROMA_PERSIST_DIR", str(_PROJECT_ROOT / "chroma_db"))
 )
@@ -115,12 +120,3 @@ RETRIEVAL_EXPERIMENT_NUM_QUESTIONS_PER_CHUNK = int(
     os.environ.get("RETRIEVAL_EXPERIMENT_NUM_QUESTIONS_PER_CHUNK", "1")
 )
 
-# Miro board (MCP server: write SVG to board)
-MIRO_ACCESS_TOKEN: str = os.environ.get("MIRO_ACCESS_TOKEN", "")
-MIRO_BOARD_ID: str = os.environ.get("MIRO_BOARD_ID", "")
-MIRO_API_BASE_URL: str = os.environ.get(
-    "MIRO_API_BASE_URL",
-    "https://api.miro.com/v2",
-)
-MIRO_IMAGE_POSITION_X: float = float(os.environ.get("MIRO_IMAGE_POSITION_X", "0.0"))
-MIRO_IMAGE_POSITION_Y: float = float(os.environ.get("MIRO_IMAGE_POSITION_Y", "0.0"))

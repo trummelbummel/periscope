@@ -1,115 +1,257 @@
 """Document reading: read and process PDF documents from the data directory.
 
 Per PRD: Read and process PDF documents from the data directory. Support PDF format.
-Uses Docling for extraction: layout-aware text, tables, and section headers in metadata.
+Uses PyMuPDF (fitz) for extraction: text, section headers (by font size), and tables in metadata.
+Parsed results are cached under PARSED_DIR so parsing does not have to be repeated.
 """
 
+import contextlib
+import hashlib
+import json
 import logging
+import os
+import statistics
 from pathlib import Path
 
-from docling.document_converter import DocumentConverter
+import fitz
 from llama_index.core import Document
 
-from periscope.config import DATA_DIR, DEFAULT_DOCUMENT_EXTENSIONS
+from periscope.config import DATA_DIR, DEFAULT_DOCUMENT_EXTENSIONS, PARSED_DIR
 
 logger = logging.getLogger(__name__)
 
 
-def _extract_headers_from_doc(doc) -> list[str]:
-    """Collect section headers and titles from docling document texts."""
+@contextlib.contextmanager
+def _suppress_mupdf_stderr():
+    """Redirect C-level stderr (fd 2) so MuPDF ExtGState/resource warnings are not printed.
+
+    MuPDF writes non-fatal errors (e.g. 'cannot find ExtGState resource') to stderr;
+    the PDF often still opens and text extraction works. This suppresses those messages.
+    """
+    stderr_fd = 2
+    try:
+        saved_fd = os.dup(stderr_fd)
+    except OSError:
+        yield
+        return
+    devnull = None
+    try:
+        devnull = open(os.devnull, "w")
+        os.dup2(devnull.fileno(), stderr_fd)
+        yield
+    finally:
+        if devnull is not None:
+            try:
+                os.dup2(saved_fd, stderr_fd)
+            except OSError:
+                pass
+            os.close(saved_fd)
+            devnull.close()
+
+
+def _cache_key(path: Path) -> str:
+    """Stable cache key for a source PDF path (hash of resolved path)."""
+    return hashlib.sha256(str(path.resolve()).encode()).hexdigest()[:32]
+
+
+def _load_parsed(parsed_path: Path) -> dict | None:
+    """Load parsed PDF data from JSON; return None if missing or invalid."""
+    if not parsed_path.exists():
+        return None
+    try:
+        data = json.loads(parsed_path.read_text(encoding="utf-8"))
+        if isinstance(data, dict) and "text" in data and "file_path" in data:
+            return data
+    except (json.JSONDecodeError, OSError) as e:
+        logger.debug("Could not load parsed cache %s: %s", parsed_path, e)
+    return None
+
+
+def _save_parsed(parsed_path: Path, data: dict) -> None:
+    """Write parsed PDF data to JSON."""
+    parsed_path.parent.mkdir(parents=True, exist_ok=True)
+    parsed_path.write_text(json.dumps(data, ensure_ascii=False, indent=0), encoding="utf-8")
+
+
+def _extract_text_from_pdf(doc: fitz.Document) -> str:
+    """Extract full text from a PyMuPDF document (natural reading order)."""
+    parts: list[str] = []
+    for page in doc:
+        text = page.get_text("text", sort=True)
+        if text.strip():
+            parts.append(text.strip())
+    return "\n\n".join(parts)
+
+
+def _extract_headers_from_pdf(doc: fitz.Document) -> list[str]:
+    """Collect section headers and titles from PDF using font-size heuristics (larger = header/title)."""
     headers: list[str] = []
-    for item in getattr(doc, "texts", []) or []:
-        label = getattr(item, "label", None)
-        label_str = getattr(label, "value", str(label)) if label is not None else ""
-        if label_str in ("section_header", "title"):
-            text = getattr(item, "text", None)
-            if text and isinstance(text, str) and text.strip():
-                headers.append(text.strip())
+    all_sizes: list[float] = []
+    size_to_texts: dict[float, list[str]] = {}
+
+    for page in doc:
+        block_dict = page.get_text("dict", sort=True)
+        for block in block_dict.get("blocks", []):
+            for line in block.get("lines", []):
+                for span in line.get("spans", []):
+                    text = (span.get("text") or "").strip()
+                    if not text:
+                        continue
+                    size = float(span.get("size", 0))
+                    if size > 0:
+                        all_sizes.append(size)
+                        size_to_texts.setdefault(size, []).append(text)
+
+    if not all_sizes:
+        return headers
+
+    median_size = statistics.median(all_sizes)
+    # Treat text with size noticeably larger than median as header/title
+    threshold = median_size * 1.15
+    seen: set[str] = set()
+    for size, texts in sorted(size_to_texts.items(), reverse=True):
+        if size < threshold:
+            break
+        for t in texts:
+            if t and t not in seen:
+                seen.add(t)
+                headers.append(t)
+
     return headers
 
 
-def _extract_tables_from_doc(conv_res) -> list[str]:
-    """Export each table as HTML for metadata (no pandas required)."""
-    doc = conv_res.document
+def _extract_tables_from_pdf(doc: fitz.Document) -> list[str]:
+    """Extract tables from PDF pages as Markdown strings (PyMuPDF find_tables + to_markdown)."""
     tables: list[str] = []
-    for table in getattr(doc, "tables", []) or []:
+    for page in doc:
         try:
-            tables.append(table.export_to_html(doc=doc))
+            finder = page.find_tables()
+            for table in finder.tables:
+                try:
+                    md = table.to_markdown()
+                    if md and md.strip():
+                        tables.append(md.strip())
+                except Exception as e:
+                    logger.debug("Could not export table to markdown: %s", e)
         except Exception as e:
-            logger.debug("Could not export table to HTML: %s", e)
+            logger.debug("find_tables failed for page %s: %s", page.number, e)
     return tables
 
 
-def _convert_path_with_docling(path: Path):
-    """Convert a single file with Docling; return ConversionResult."""
-    converter = DocumentConverter()
-    return converter.convert(path)
+def _open_pdf(path: Path) -> fitz.Document:
+    """Open a PDF file with PyMuPDF; caller must close the document."""
+    return fitz.open(path)
 
 
 class DocumentReader:
-    """Reads and processes PDF (and optional other) documents using Docling."""
+    """Reads and processes PDF (and optional other) documents using PyMuPDF; caches parsed output."""
 
     def __init__(
         self,
         directory: Path | None = None,
         required_extensions: list[str] | None = None,
+        parsed_dir: Path | None = None,
     ) -> None:
-        """Initialize with directory and file extensions to load.
+        """Initialize with directory, file extensions, and parsed cache directory.
 
         :param directory: Directory to read from; defaults to config DATA_DIR.
         :param required_extensions: File extensions to load; default from config.
+        :param parsed_dir: Directory for cached parsed PDFs; defaults to config PARSED_DIR.
         """
         self.directory = directory if directory is not None else DATA_DIR
         self._directory = Path(self.directory)
         self.required_extensions = (
             required_extensions if required_extensions is not None else DEFAULT_DOCUMENT_EXTENSIONS
         )
+        self._parsed_dir = Path(parsed_dir) if parsed_dir is not None else PARSED_DIR
 
     def read_pdf_path(self, path: Path) -> str:
-        """Extract text from a single PDF file (Markdown with layout and tables).
+        """Extract text from a single PDF file (from cache if available and up to date).
 
         :param path: Path to PDF file.
-        :return: Extracted text (Markdown).
+        :return: Extracted text (plain text, reading order).
         :raises FileNotFoundError: If path does not exist.
         :raises Exception: On conversion failure.
         """
         if not path.exists():
             logger.warning("PDF path does not exist: %s", path)
             raise FileNotFoundError(path)
+        resolved = path.resolve()
+        cached = self._parsed_dir / (_cache_key(resolved) + ".json")
+        data = _load_parsed(cached)
+        if data is not None and cached.stat().st_mtime >= resolved.stat().st_mtime:
+            logger.debug("Using cached parse for %s", path)
+            return data["text"]
         try:
-            conv_res = _convert_path_with_docling(path)
-            return conv_res.document.export_to_markdown()
+            with _suppress_mupdf_stderr():
+                doc = _open_pdf(path)
+                try:
+                    text = _extract_text_from_pdf(doc)
+                    headers = _extract_headers_from_pdf(doc)
+                    tables = _extract_tables_from_pdf(doc)
+                finally:
+                    doc.close()
+            _save_parsed(
+                cached,
+                {
+                    "text": text,
+                    "headers": headers,
+                    "tables": tables,
+                    "file_path": str(resolved),
+                },
+            )
+            return text
         except Exception as e:
             logger.exception("Failed to convert PDF %s: %s", path, e)
             raise
 
     def _path_to_llama_document(self, path: Path) -> Document | None:
-        """Convert a single file to a LlamaIndex Document with headers and tables in metadata."""
+        """Convert a single file to a LlamaIndex Document (from cache if available and up to date)."""
         if not path.exists():
             return None
+        resolved = path.resolve()
+        cached = self._parsed_dir / (_cache_key(resolved) + ".json")
+        data = _load_parsed(cached)
+        if data is not None and cached.stat().st_mtime >= resolved.stat().st_mtime:
+            logger.debug("Using cached parse for %s", path)
+            metadata: dict = {"file_path": data["file_path"]}
+            if data.get("headers"):
+                metadata["headers"] = data["headers"]
+            if data.get("tables"):
+                metadata["tables"] = data["tables"]
+            return Document(text=data["text"], metadata=metadata)
         try:
-            conv_res = _convert_path_with_docling(path)
-            doc = conv_res.document
-            text = doc.export_to_markdown()
-            headers = _extract_headers_from_doc(doc)
-            tables = _extract_tables_from_doc(conv_res)
-            metadata: dict = {
-                "file_path": str(path.resolve()),
-            }
+            with _suppress_mupdf_stderr():
+                doc = _open_pdf(path)
+                try:
+                    text = _extract_text_from_pdf(doc)
+                    headers = _extract_headers_from_pdf(doc)
+                    tables = _extract_tables_from_pdf(doc)
+                finally:
+                    doc.close()
+            _save_parsed(
+                cached,
+                {
+                    "text": text,
+                    "headers": headers,
+                    "tables": tables,
+                    "file_path": str(resolved),
+                },
+            )
+            metadata = {"file_path": str(resolved)}
             if headers:
                 metadata["headers"] = headers
             if tables:
                 metadata["tables"] = tables
             return Document(text=text, metadata=metadata)
         except Exception as e:
-            logger.warning("Docling conversion failed for %s: %s", path, e)
+            logger.warning("PyMuPDF conversion failed for %s: %s", path, e)
             return None
 
     def load_documents(self) -> list[Document]:
         """Load documents from the configured directory as LlamaIndex Documents.
 
-        Each document has text from Docling (Markdown with layout and tables) and
-        metadata: file_path, headers (section headers and titles), tables (table Markdown/HTML).
+        Each document has text from PyMuPDF and metadata: file_path, headers, tables.
 
         :return: List of LlamaIndex Document objects.
         """
@@ -123,13 +265,23 @@ class DocumentReader:
         if not paths:
             logger.info("No matching files in %s (extensions: %s)", self._directory, self.required_extensions)
             return []
+        logger.info(
+            "Loading %d files from %s (extensions: %s)",
+            len(paths),
+            self._directory,
+            self.required_extensions,
+        )
         docs: list[Document] = []
         for path in paths:
             if not path.is_file():
+                logger.debug("Skipping non-file path: %s", path)
                 continue
+            logger.debug("Loading document from path: %s", path)
             doc = self._path_to_llama_document(path)
             if doc is not None:
                 docs.append(doc)
+            else:
+                logger.debug("Skipped %s (conversion returned None)", path)
         logger.info("Loaded %d documents from %s", len(docs), self._directory)
         return docs
 
@@ -138,7 +290,7 @@ class DocumentReader:
         """Extract text from a single PDF file (convenience; uses default directory).
 
         :param path: Path to PDF file.
-        :return: Extracted text (Markdown).
+        :return: Extracted text.
         """
         reader = DocumentReader()
         return reader.read_pdf_path(path)
