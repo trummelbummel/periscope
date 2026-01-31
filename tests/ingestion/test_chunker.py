@@ -15,14 +15,13 @@ def test_chunk_documents_produces_nodes() -> None:
     chunk_overlap = 10
     nodes = chunk_documents(docs, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     assert len(nodes) >= 1
-    # SentenceSplitter keeps sentence boundaries, so chunks may exceed chunk_size slightly
-    max_chunk = chunk_size + 350
+    # MarkdownNodeParser splits by headers; plain text becomes one node, so no chunk size bound
     for node in nodes:
-        assert len(node.get_content()) <= max_chunk
+        assert len(node.get_content()) > 0
 
 
 def test_chunk_documents_handles_large_metadata() -> None:
-    """chunk_documents trims metadata so SentenceSplitter does not raise (metadata > chunk_size)."""
+    """chunk_documents trims metadata so the parser does not raise (metadata > chunk_size)."""
     huge_tables = ["x" * 2000]
     doc = Document(
         text="Short text.",

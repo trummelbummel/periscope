@@ -90,9 +90,9 @@ Documentation is derived strictly from the codebase (docstrings, `__all__`, and 
 
 - **Purpose:** Configuration for the periscope RAG service (docstring: "All paths, models, ports, and API keys are configurable via environment variables or defaults. Load with python-dotenv for .env support. Lives at project root (next to pyproject.toml).").
 - **Key responsibilities:**
-  - Define and export all settings from environment (with defaults): API (PORT, API_HOST, API_RELOAD), data paths (DATA_DIR, ARXIV_DATA_DIR, PARSED_DIR), arXiv (ARXIV_DEFAULT_QUERY, ARXIV_MAX_RESULTS, ARXIV_API_BASE_URL, ARXIV_HTTP_TIMEOUT, ARXIV_USER_AGENT), document extensions, Chroma/INDEX paths, embedding/generation models and prompt, TOP_K, chunking, preprocessing flags, guardrails and SIMILARITY_THRESHOLD, INDEX_VERSION, INGESTION_STATS_PATH, RETRIEVAL_EXPERIMENT_*.
+  - Define and export all settings from environment (with defaults): API (PORT, API_HOST, API_RELOAD), data paths (DATA_DIR, ARXIV_DATA_DIR, PARSED_DIR), arXiv (ARXIV_DEFAULT_QUERY, ARXIV_MAX_RESULTS, ARXIV_API_BASE_URL, ARXIV_HTTP_TIMEOUT, ARXIV_USER_AGENT), document extensions, Chroma/INDEX paths (COLLECTION_NAME), embedding/generation models and prompt, TOP_K, RRF_K, chunking (PARAGRAPH_SEPARATOR, METADATA_SIZE_MARGIN), preprocessing flags, guardrails and SIMILARITY_THRESHOLD, INDEX_VERSION, INGESTION_STATS_PATH, RETRIEVAL_EXPERIMENT_*.
 - **Important public interfaces:**
-  - All uppercase names listed above (e.g. `PORT`, `API_HOST`, `CHROMA_PERSIST_DIR`, `EMBEDDING_MODEL`, `GENERATION_MODEL`, `TOP_K`, `CHUNK_SIZE`, `CHUNK_OVERLAP`, `INGESTION_STATS_PATH`, `RETRIEVAL_EXPERIMENT_MAX_NODES`, `RETRIEVAL_EXPERIMENT_NUM_QUESTIONS_PER_CHUNK`, etc.) — read by other modules.
+  - All uppercase names listed above (e.g. `PORT`, `API_HOST`, `CHROMA_PERSIST_DIR`, `EMBEDDING_MODEL`, `GENERATION_MODEL`, `TOP_K`, `CHUNK_SIZE`, `CHUNK_OVERLAP`, `PARAGRAPH_SEPARATOR`, `METADATA_SIZE_MARGIN`, `COLLECTION_NAME`, `RRF_K`, `INGESTION_STATS_PATH`, `RETRIEVAL_EXPERIMENT_MAX_NODES`, `RETRIEVAL_EXPERIMENT_NUM_QUESTIONS_PER_CHUNK`, etc.) — read by other modules.
 
 ---
 

@@ -66,23 +66,53 @@ GENERATION_MODEL = os.environ.get(
 )
 GENERATION_PROMPT = os.environ.get(
     "GENERATION_PROMPT",
-    """Answer the question based only on the following context. 
+    """
+    ### TASK
+    Answer the question based only on the following context. 
+
+    ### ANSWER FORMAT STRUCTURE
     Answer in well structured markdown format. 
     Use headings and subheadings as well as bullet points
     to structure the answer.
-    Also if there are numbers in the context highlight them in bold.
+    If there are numbers in the context highlight them in bold.
     \n\nContext:\n{context_str}\n\n
     Question: {query_str}\n\n
-    Answer:""",
+    Return the answer:
+    """,
 )
 HUGGINGFACE_TOKEN = os.environ.get("HUGGINGFACE_TOKEN", "") or os.environ.get("HF_TOKEN", "")
 
 # Retrieval
 TOP_K = int(os.environ.get("TOP_K", "10"))
+# Reciprocal rank fusion constant for hybrid retrieval (BM25 + vector)
+RRF_K = int(os.environ.get("RRF_K", "60"))
+# Chroma collection name for the vector index
+COLLECTION_NAME = os.environ.get("COLLECTION_NAME", "context_engineering")
 
-# Chunking (header-aware chunker for research papers)
-CHUNK_SIZE = int(os.environ.get("CHUNK_SIZE", "512"))
-CHUNK_OVERLAP = int(os.environ.get("CHUNK_OVERLAP", "50"))
+# Chunking (Markdown then SentenceSplitter via LlamaIndex IngestionPipeline)
+# SentenceSplitter uses token counts; chunker result is at most CHUNK_SIZE tokens per chunk.
+CHUNK_SIZE = int(os.environ.get("CHUNK_SIZE", "128"))
+CHUNK_OVERLAP = int(os.environ.get("CHUNK_OVERLAP", "20"))
+PARAGRAPH_SEPARATOR = os.environ.get("PARAGRAPH_SEPARATOR", "#")
+# MarkdownNodeParser: heading levels to split on (1=#, 2=##, 3=###); env e.g. "1,2,3"
+def _parse_int_list(env_val: str, default: list[int]) -> list[int]:
+    if not env_val or not env_val.strip():
+        return default
+    try:
+        return [int(x.strip()) for x in env_val.split(",") if x.strip()]
+    except ValueError:
+        return default
+
+
+MARKDOWN_INCLUDE_HEADING_LEVELS: list[int] = _parse_int_list(
+    os.environ.get("MARKDOWN_INCLUDE_HEADING_LEVELS", "1,2,3"), [1, 2, 3]
+)
+MARKDOWN_INCLUDE_METADATA = (
+    os.environ.get("MARKDOWN_INCLUDE_METADATA", "true").strip().lower()
+    in ("1", "true", "yes")
+)
+# Leave room so metadata + text per chunk stays under chunk_size in SentenceSplitter
+METADATA_SIZE_MARGIN = int(os.environ.get("METADATA_SIZE_MARGIN", "128"))
 
 # Preprocessing during ingestion: remove noise (tables, footnotes, citations, references)
 def _truthy(s: str) -> bool:

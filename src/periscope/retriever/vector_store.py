@@ -13,12 +13,15 @@ from llama_index.core import VectorStoreIndex
 from llama_index.core.schema import BaseNode
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
-from periscope.config import CHROMA_PERSIST_DIR, INDEX_NODES_PATH, INDEX_VERSION
+from periscope.config import (
+    CHROMA_PERSIST_DIR,
+    COLLECTION_NAME,
+    INDEX_NODES_PATH,
+    INDEX_VERSION,
+)
 from periscope.embedder import set_global_embed_model
 
 logger = logging.getLogger(__name__)
-
-COLLECTION_NAME = "context_engineering"
 
 
 def _filter_embeddable_nodes(nodes: list[BaseNode]) -> list[BaseNode]:

@@ -73,14 +73,40 @@ def _save_parsed(parsed_path: Path, data: dict) -> None:
     parsed_path.write_text(json.dumps(data, ensure_ascii=False, indent=0), encoding="utf-8")
 
 
-def _extract_text_from_pdf(doc: fitz.Document) -> str:
-    """Extract full text from a PyMuPDF document (natural reading order)."""
+def _extract_markdown_from_pdf(doc: fitz.Document) -> str:
+    """Extract markdown from a PyMuPDF document (headers as ## from font-size heuristics)."""
+    all_sizes: list[float] = []
+    for page in doc:
+        block_dict = page.get_text("dict", sort=True)
+        for block in block_dict.get("blocks", []):
+            for line in block.get("lines", []):
+                for span in line.get("spans", []):
+                    size = float(span.get("size", 0))
+                    if size > 0:
+                        all_sizes.append(size)
+    median_size = statistics.median(all_sizes) if all_sizes else 12.0
+    header_threshold = median_size * 1.15
+
     parts: list[str] = []
     for page in doc:
-        text = page.get_text("text", sort=True)
-        if text.strip():
-            parts.append(text.strip())
-    return "\n\n".join(parts)
+        block_dict = page.get_text("dict", sort=True)
+        for block in block_dict.get("blocks", []):
+            for line in block.get("lines", []):
+                line_parts: list[str] = []
+                for span in line.get("spans", []):
+                    text = (span.get("text") or "").strip()
+                    if not text:
+                        continue
+                    size = float(span.get("size", 0))
+                    if size >= header_threshold:
+                        line_parts.append("## " + text)
+                    else:
+                        line_parts.append(text)
+                if line_parts:
+                    parts.append(" ".join(line_parts))
+            if parts and parts[-1].strip():
+                parts.append("")
+    return "\n".join(parts).strip()
 
 
 def _extract_headers_from_pdf(doc: fitz.Document) -> list[str]:
@@ -186,7 +212,7 @@ class DocumentReader:
             with _suppress_mupdf_stderr():
                 doc = _open_pdf(path)
                 try:
-                    text = _extract_text_from_pdf(doc)
+                    text = _extract_markdown_from_pdf(doc)
                     headers = _extract_headers_from_pdf(doc)
                     tables = _extract_tables_from_pdf(doc)
                 finally:
@@ -224,7 +250,7 @@ class DocumentReader:
             with _suppress_mupdf_stderr():
                 doc = _open_pdf(path)
                 try:
-                    text = _extract_text_from_pdf(doc)
+                    text = _extract_markdown_from_pdf(doc)
                     headers = _extract_headers_from_pdf(doc)
                     tables = _extract_tables_from_pdf(doc)
                 finally:

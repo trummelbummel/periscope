@@ -29,7 +29,7 @@ def test_read_pdf_path_returns_text_when_conversion_succeeds(tmp_path: Path) -> 
 
     with patch("periscope.ingestion.document_reader._open_pdf") as m_open:
         m_open.return_value = MagicMock()
-        with patch("periscope.ingestion.document_reader._extract_text_from_pdf", return_value=mock_text):
+        with patch("periscope.ingestion.document_reader._extract_markdown_from_pdf", return_value=mock_text):
             result = read_pdf_path(pdf)
         assert result == mock_text
         m_open.assert_called_once_with(pdf)
@@ -71,7 +71,7 @@ def test_load_documents_returns_documents_with_metadata(tmp_path: Path) -> None:
 
     with patch("periscope.ingestion.document_reader._open_pdf") as m_open:
         m_open.return_value = MagicMock()
-        with patch("periscope.ingestion.document_reader._extract_text_from_pdf", return_value=mock_text):
+        with patch("periscope.ingestion.document_reader._extract_markdown_from_pdf", return_value=mock_text):
             with patch("periscope.ingestion.document_reader._extract_headers_from_pdf", return_value=mock_headers):
                 with patch("periscope.ingestion.document_reader._extract_tables_from_pdf", return_value=[]):
                     reader = DocumentReader(directory=tmp_path, required_extensions=[".pdf"])
@@ -94,7 +94,7 @@ def test_load_documents_includes_tables_in_metadata(tmp_path: Path) -> None:
 
     with patch("periscope.ingestion.document_reader._open_pdf") as m_open:
         m_open.return_value = MagicMock()
-        with patch("periscope.ingestion.document_reader._extract_text_from_pdf", return_value=mock_text):
+        with patch("periscope.ingestion.document_reader._extract_markdown_from_pdf", return_value=mock_text):
             with patch("periscope.ingestion.document_reader._extract_headers_from_pdf", return_value=[]):
                 with patch("periscope.ingestion.document_reader._extract_tables_from_pdf", return_value=mock_tables):
                     reader = DocumentReader(directory=tmp_path, required_extensions=[".pdf"])

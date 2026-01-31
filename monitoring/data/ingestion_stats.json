@@ -1,8 +1,8 @@
 {
   "document_count": 19,
-  "chunk_count": 629,
-  "total_chars": 918951,
-  "avg_chunk_size": 1460.97,
+  "chunk_count": 2904,
+  "total_chars": 880677,
+  "avg_chunk_size": 303.26,
   "paths": [
     "/Users/theresa/projects/miro_case/periscope/data/test/2305.03495v2.pdf",
     "/Users/theresa/projects/miro_case/periscope/data/test/2305.13954v3.pdf",
@@ -32,6 +32,6 @@
     "remove_inline_citations": true,
     "remove_reference_section": true
   },
-  "chunk_size": 512,
-  "chunk_overlap": 50
+  "chunk_size": 128,
+  "chunk_overlap": 20
 }

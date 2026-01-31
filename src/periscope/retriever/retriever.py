@@ -11,12 +11,10 @@ from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.core.schema import BaseNode, NodeWithScore
 from llama_index.retrievers.bm25 import BM25Retriever
 
-from periscope.config import TOP_K
+from periscope.config import RRF_K, TOP_K
 from periscope.embedder import set_global_embed_model
 
 logger = logging.getLogger(__name__)
-
-RRF_K = 60
 
 
 class HybridRetriever:
