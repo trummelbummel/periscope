@@ -3,7 +3,6 @@
 from llama_index.core import Document
 
 from periscope.ingestion import chunk_documents
-from periscope.ingestion.chunker import _metadata_byte_size, _trim_document_metadata
 
 
 def test_chunk_documents_produces_nodes() -> None:
@@ -15,29 +14,31 @@ def test_chunk_documents_produces_nodes() -> None:
     chunk_overlap = 10
     nodes = chunk_documents(docs, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     assert len(nodes) >= 1
-    # MarkdownNodeParser splits by headers; plain text becomes one node, so no chunk size bound
     for node in nodes:
         assert len(node.get_content()) > 0
 
 
-def test_chunk_documents_handles_large_metadata() -> None:
-    """chunk_documents trims metadata so the parser does not raise (metadata > chunk_size)."""
-    huge_tables = ["x" * 2000]
-    doc = Document(
-        text="Short text.",
-        metadata={"file_path": "/a.pdf", "headers": ["H1"], "tables": huge_tables},
-    )
-    assert _metadata_byte_size(doc.metadata) > 512
-    nodes = chunk_documents([doc], chunk_size=512, chunk_overlap=10)
-    assert len(nodes) >= 1
-
-
-def test_trim_document_metadata_caps_size() -> None:
-    """_trim_document_metadata returns metadata under max size."""
-    doc = Document(
-        text="x",
-        metadata={"file_path": "/a.pdf", "headers": ["H"], "tables": ["t" * 3000]},
-    )
-    trimmed = _trim_document_metadata(doc, max_metadata_size=400)
-    assert _metadata_byte_size(trimmed.metadata) <= 400
-    assert trimmed.metadata.get("file_path") == "/a.pdf"
+def test_markdown_headers_are_parsed() -> None:
+    """chunk_documents uses MarkdownNodeParser to respect multiple markdown header levels."""
+    docs = [
+        Document(
+            text=(
+                "# H1 Title\n"
+                "Intro text.\n\n"
+                "## H2 Section\n"
+                "More text.\n\n"
+                "### H3 Subsection\n"
+                "Even more text.\n\n"
+                "#### H4 Deeper\n"
+                "Deep text."
+            ),
+        ),
+    ]
+    nodes = chunk_documents(docs, chunk_size=100, chunk_overlap=0)
+    assert len(nodes) >= 4
+    contents = [n.get_content() for n in nodes]
+    # Ensure each header level appears in at least one node's text
+    assert any("# H1 Title" in c for c in contents)
+    assert any("## H2 Section" in c for c in contents)
+    assert any("### H3 Subsection" in c for c in contents)
+    assert any("#### H4 Deeper" in c for c in contents)

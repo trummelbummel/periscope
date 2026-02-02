@@ -61,55 +61,12 @@ def test_load_documents_returns_empty_when_no_matching_files(tmp_path: Path) -> 
     assert reader.load_documents() == []
 
 
-def test_load_documents_returns_documents_with_metadata(tmp_path: Path) -> None:
-    """load_documents returns LlamaIndex Documents with file_path, headers, tables in metadata."""
-    pdf = tmp_path / "paper.pdf"
-    pdf.write_bytes(b"%PDF-1.4 dummy")
-
-    mock_text = "# Introduction\n\nContent."
-    mock_headers = ["Introduction"]
-
-    with patch("periscope.ingestion.document_reader._open_pdf") as m_open:
-        m_open.return_value = MagicMock()
-        with patch("periscope.ingestion.document_reader._extract_markdown_from_pdf", return_value=mock_text):
-            with patch("periscope.ingestion.document_reader._extract_headers_from_pdf", return_value=mock_headers):
-                with patch("periscope.ingestion.document_reader._extract_tables_from_pdf", return_value=[]):
-                    reader = DocumentReader(directory=tmp_path, required_extensions=[".pdf"])
-                    docs = reader.load_documents()
-
-    assert len(docs) == 1
-    assert isinstance(docs[0], Document)
-    assert docs[0].text == mock_text
-    assert docs[0].metadata["file_path"] == str(pdf.resolve())
-    assert docs[0].metadata["headers"] == ["Introduction"]
-
-
-def test_load_documents_includes_tables_in_metadata(tmp_path: Path) -> None:
-    """load_documents adds table Markdown to metadata when PyMuPDF extracts tables."""
-    pdf = tmp_path / "paper.pdf"
-    pdf.write_bytes(b"%PDF-1.4 dummy")
-
-    mock_text = "# Paper\n\nTable below."
-    mock_tables = ["| col |\n|---|\n| 1 |"]
-
-    with patch("periscope.ingestion.document_reader._open_pdf") as m_open:
-        m_open.return_value = MagicMock()
-        with patch("periscope.ingestion.document_reader._extract_markdown_from_pdf", return_value=mock_text):
-            with patch("periscope.ingestion.document_reader._extract_headers_from_pdf", return_value=[]):
-                with patch("periscope.ingestion.document_reader._extract_tables_from_pdf", return_value=mock_tables):
-                    reader = DocumentReader(directory=tmp_path, required_extensions=[".pdf"])
-                    docs = reader.load_documents()
-
-    assert len(docs) == 1
-    assert docs[0].metadata["tables"] == ["| col |\n|---|\n| 1 |"]
-
-
 def test_load_documents_from_directory_default_delegates(tmp_path: Path) -> None:
     """load_documents_from_directory uses DocumentReader and returns its result."""
     with patch.object(
         DocumentReader,
         "load_documents",
-        return_value=[Document(text="x", metadata={"file_path": "y"})],
+        return_value=[Document(text="x")],
     ) as m_load:
         result = load_documents_from_directory(
             directory=tmp_path, required_extensions=[".pdf"]
