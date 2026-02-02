@@ -2,15 +2,15 @@
 
 Per PRD: ChromaDB for PoC. CHROMA_PERSIST_DIR = project_root/chroma_db.
 Index is persisted in Chroma; BM25 nodes are persisted to INDEX_NODES_PATH (pickle).
+Only the text chunk is embedded (metadata is not included in the embedding).
 """
 
 import logging
 import pickle
 from pathlib import Path
-
 import chromadb
 from llama_index.core import VectorStoreIndex
-from llama_index.core.schema import BaseNode
+from llama_index.core.schema import BaseNode, MetadataMode
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
 from periscope.config import (
@@ -19,9 +19,28 @@ from periscope.config import (
     INDEX_NODES_PATH,
     INDEX_VERSION,
 )
-from periscope.embedder import set_global_embed_model
+from periscope.embedder import get_embed_model, set_global_embed_model
 
 logger = logging.getLogger(__name__)
+
+# We embed only node text (MetadataMode.NONE); metadata is stored but not embedded.
+
+
+def _build_index_embed_text_only(
+    nodes: list[BaseNode],
+    vector_store: ChromaVectorStore,
+) -> VectorStoreIndex:
+    """Build VectorStoreIndex with embeddings from text-only (no metadata in embedding)."""
+    embed_model = get_embed_model()
+    texts = [n.get_content(metadata_mode=MetadataMode.NONE) for n in nodes]
+    embeddings = embed_model.get_text_embedding_batch(texts, show_progress=True)
+    for node, emb in zip(nodes, embeddings):
+        node.embedding = emb
+    return VectorStoreIndex(
+        nodes=nodes,
+        vector_store=vector_store,
+        show_progress=True,
+    )
 
 
 def _filter_embeddable_nodes(nodes: list[BaseNode]) -> list[BaseNode]:
@@ -67,8 +86,9 @@ class ChromaIndexBuilder:
         """Build a VectorStoreIndex from nodes using ChromaDB; embeddings are stored at first creation.
 
         Nodes are embedded and inserted into the Chroma collection; PersistentClient persists
-        to disk automatically. Nodes with empty or non-string content are skipped so the embedder
-        does not receive invalid input (avoids TypeError from the tokenizer).
+        to disk automatically. Only the text chunk is embedded (metadata is excluded).
+        Nodes with empty or non-string content are skipped so the embedder does not receive
+        invalid input (avoids TypeError from the tokenizer).
 
         :param nodes: Chunk nodes to embed and store.
         :return: (VectorStoreIndex for retrieval, list of nodes that were actually embedded).
@@ -79,12 +99,11 @@ class ChromaIndexBuilder:
             logger.warning("Skipped %d nodes with empty or non-string content (embedder requires valid text)", skipped)
         set_global_embed_model()
         vector_store = self.get_chroma_vector_store()
-        index = VectorStoreIndex(
-            nodes=embeddable,
+        index = _build_index_embed_text_only(
+            embeddable,
             vector_store=vector_store,
-            show_progress=True,
         )
-        logger.info("Built index from %d nodes (embeddings stored in Chroma)", len(embeddable))
+        logger.info("Built index from %d nodes (embeddings stored in Chroma, text-only)", len(embeddable))
         return index, embeddable
 
     @staticmethod

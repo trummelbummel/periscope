@@ -2,7 +2,7 @@
 
 Per PRD: Read and process PDF documents from the data directory. Support PDF format.
 Uses PyMuPDF (fitz) for extraction: text, section headers (by font size), and tables in metadata.
-Parsed results are cached under PARSED_DIR so parsing does not have to be repeated.
+Parsed results are cached under PARSED_DIR (default data/parsed) so parsing does not have to be repeated.
 """
 
 import contextlib

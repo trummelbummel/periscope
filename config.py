@@ -41,9 +41,9 @@ ARXIV_USER_AGENT = "rag-arxiv-scraper (mailto:theresa.fruhwuerth@gmail.com)"
 
 # Document loading: default file extensions for directory reader
 DEFAULT_DOCUMENT_EXTENSIONS: list[str] = [".pdf"]
-# Parsed PDF cache: store extracted text, headers, tables so parsing does not have to be repeated
+# Parsed PDF cache: store extracted text, headers, tables under data/parsed so parsing does not have to be repeated
 PARSED_DIR: Path = Path(
-    os.environ.get("PARSED_DIR", str(_PROJECT_ROOT / "parsed"))
+    os.environ.get("PARSED_DIR", str(_PROJECT_ROOT / "data" / "parsed"))
 )
 CHROMA_PERSIST_DIR: Path = Path(
     os.environ.get("CHROMA_PERSIST_DIR", str(_PROJECT_ROOT / "chroma_db"))
@@ -67,20 +67,32 @@ GENERATION_MODEL = os.environ.get(
 GENERATION_PROMPT = os.environ.get(
     "GENERATION_PROMPT",
     """
-    ### TASK
-    Answer the question based only on the following context. 
+    Think step by step and reason about the question and the context.
 
-    ### ANSWER FORMAT STRUCTURE
-    Answer in well structured markdown format. 
-    Use headings and subheadings as well as bullet points
-    to structure the answer.
-    If there are numbers in the context highlight them in bold.
+    ### INSTRUCTIONS
+    1. Do not duplicate or hallucinate any information.
+    2. Answer the question based only on the following context and strictly 
+    adhere to information in the context. 
+    3. Structure the important information in the answer with respect to 
+    the question in bullet points.
+
+    ### FORMAT
+    4. Answer in well structured markdown format adding Headers with method names. 
+    5. Use bullet points to structure the answer.
+
+    Follow all these instructions strictly. 
+
+    ### INPUT
     \n\nContext:\n{context_str}\n\n
     Question: {query_str}\n\n
+
+    ###OUTPUT
     Return the answer:
     """,
 )
 HUGGINGFACE_TOKEN = os.environ.get("HUGGINGFACE_TOKEN", "") or os.environ.get("HF_TOKEN", "")
+# Max tokens for LLM answer generation; cut-off after GENERATION_MAX_TOKENS tokens.
+GENERATION_MAX_TOKENS = int(os.environ.get("GENERATION_MAX_TOKENS", "1024"))
 
 # Retrieval
 TOP_K = int(os.environ.get("TOP_K", "10"))

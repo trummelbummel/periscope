@@ -10,6 +10,7 @@ from typing import Any
 from llama_index.llms.huggingface_api import HuggingFaceInferenceAPI
 
 from periscope.config import (
+    GENERATION_MAX_TOKENS,
     GENERATION_MODEL,
     GENERATION_PROMPT,
     HUGGINGFACE_TOKEN,
@@ -103,6 +104,7 @@ class AnswerGenerator:
         return HuggingFaceInferenceAPI(
             model_name=self._model,
             token=self._token.strip() if self._token and self._token.strip() else None,
+            num_output=GENERATION_MAX_TOKENS,
         )
 
     def generate_answer(
