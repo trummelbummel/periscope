@@ -5,7 +5,6 @@ Uses LlamaIndex IngestionPipeline: MarkdownNodeParser (split by headers) then Se
 (chunk_size/chunk_overlap). Document text is markdown from PyMuPDF.
 """
 
-import json
 import logging
 
 from llama_index.core import Document
@@ -17,66 +16,12 @@ from llama_index.core.schema import BaseNode
 from periscope.config import (
     CHUNK_OVERLAP,
     CHUNK_SIZE,
+    MARKDOWN_HEADER_PATH_SEPARATOR,
     MARKDOWN_INCLUDE_METADATA,
-    METADATA_SIZE_MARGIN,
+    MARKDOWN_INCLUDE_PREV_NEXT_REL,
 )
 
 logger = logging.getLogger(__name__)
-
-
-def _metadata_byte_size(metadata: dict) -> int:
-    """Approximate size of metadata when serialized (e.g. for chunker limit)."""
-    return len(json.dumps(metadata, ensure_ascii=False))
-
-
-def _trim_document_metadata(doc: Document, max_metadata_size: int) -> Document:
-    """Return a document with metadata capped so serialized size <= max_metadata_size.
-
-    Keeps file_path; truncates or drops headers/tables if needed so metadata fits.
-    Avoids parser ValueError when metadata length > chunk_size.
-    """
-    if not doc.metadata:
-        return doc
-    if _metadata_byte_size(doc.metadata) <= max_metadata_size:
-        return doc
-    out: dict = {"file_path": doc.metadata.get("file_path", "")}
-    if _metadata_byte_size(out) > max_metadata_size:
-        return Document(text=doc.text, metadata=out)
-    # Add headers (list of strings) - take prefix that fits
-    headers = doc.metadata.get("headers") or []
-    if headers and isinstance(headers, list):
-        trimmed_headers: list[str] = []
-        for h in headers:
-            candidate = trimmed_headers + [h]
-            if _metadata_byte_size(out | {"headers": candidate}) <= max_metadata_size:
-                trimmed_headers = candidate
-            else:
-                break
-        if trimmed_headers:
-            out["headers"] = trimmed_headers
-    # Add tables (list of strings) - truncate each string so total fits
-    tables = doc.metadata.get("tables") or []
-    remaining = max_metadata_size - _metadata_byte_size(out)
-    if tables and isinstance(tables, list) and remaining > 100:
-        max_per_table = max(200, (remaining - 50) // max(len(tables), 1))
-        trimmed_tables: list[str] = []
-        for t in tables:
-            s = t if isinstance(t, str) else str(t)
-            if len(s) > max_per_table:
-                s = s[: max_per_table - 3] + "..."
-            trial = out | {"tables": trimmed_tables + [s]}
-            if _metadata_byte_size(trial) <= max_metadata_size:
-                trimmed_tables.append(s)
-            else:
-                break
-        if trimmed_tables:
-            out["tables"] = trimmed_tables
-    logger.debug(
-        "Trimmed document metadata from %d to %d bytes",
-        _metadata_byte_size(doc.metadata),
-        _metadata_byte_size(out),
-    )
-    return Document(text=doc.text, metadata=out)
 
 
 def _make_chunking_transformations(
@@ -85,12 +30,17 @@ def _make_chunking_transformations(
 ) -> list[NodeParser]:
     """Build MarkdownNodeParser then SentenceSplitter for IngestionPipeline.
 
-    Markdown splits by headers (config: MARKDOWN_INCLUDE_METADATA).
+    Markdown splits by headers; MarkdownNodeParser header options are driven by config:
+    - MARKDOWN_INCLUDE_METADATA toggles header_path metadata on nodes.
+    - MARKDOWN_INCLUDE_PREV_NEXT_REL toggles prev/next header relationships.
+    - MARKDOWN_HEADER_PATH_SEPARATOR controls the header_path separator (default '/').
     SentenceSplitter uses chunk_size/chunk_overlap in tokens (config: CHUNK_SIZE, CHUNK_OVERLAP);
     chunker output is at most chunk_size tokens per node.
     """
     markdown_parser = MarkdownNodeParser.from_defaults(
         include_metadata=MARKDOWN_INCLUDE_METADATA,
+        include_prev_next_rel=MARKDOWN_INCLUDE_PREV_NEXT_REL,
+        header_path_separator=MARKDOWN_HEADER_PATH_SEPARATOR,
     )
     sentence_splitter = SentenceSplitter(
         chunk_size=chunk_size,
@@ -132,18 +82,13 @@ class HeaderAwareChunker:
     def chunk_documents(self, documents: list[Document]) -> list[BaseNode]:
         """Split documents into nodes: markdown sections then sentence-sized chunks.
 
-        Trims document metadata so it does not exceed chunk_size (avoids parser
-        errors when metadata length > chunk size).
-
         :param documents: LlamaIndex Documents to chunk (text should be markdown).
         :return: List of nodes (markdown sections split by SentenceSplitter).
         """
         if not documents:
             logger.warning("chunk_documents called with empty documents")
             return []
-        max_meta = max(0, self._chunk_size - METADATA_SIZE_MARGIN)
-        trimmed = [_trim_document_metadata(d, max_meta) for d in documents]
-        nodes = self._pipeline.run(documents=trimmed)
+        nodes = self._pipeline.run(documents=documents)
         logger.info("Chunked %d documents into %d nodes", len(documents), len(nodes))
         return nodes
 

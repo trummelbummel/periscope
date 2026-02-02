@@ -1,7 +1,7 @@
 """Document reading: read and process PDF documents from the data directory.
 
 Per PRD: Read and process PDF documents from the data directory. Support PDF format.
-Uses PyMuPDF (fitz) for extraction: text, section headers (by font size), and tables in metadata.
+Uses PyMuPDF (fitz) for extraction: markdown text only (no per-chunk metadata).
 Parsed results are cached under PARSED_DIR (default data/parsed) so parsing does not have to be repeated.
 """
 
@@ -60,7 +60,7 @@ def _load_parsed(parsed_path: Path) -> dict | None:
         return None
     try:
         data = json.loads(parsed_path.read_text(encoding="utf-8"))
-        if isinstance(data, dict) and "text" in data and "file_path" in data:
+        if isinstance(data, dict) and "text" in data:
             return data
     except (json.JSONDecodeError, OSError) as e:
         logger.debug("Could not load parsed cache %s: %s", parsed_path, e)
@@ -107,61 +107,6 @@ def _extract_markdown_from_pdf(doc: fitz.Document) -> str:
             if parts and parts[-1].strip():
                 parts.append("")
     return "\n".join(parts).strip()
-
-
-def _extract_headers_from_pdf(doc: fitz.Document) -> list[str]:
-    """Collect section headers and titles from PDF using font-size heuristics (larger = header/title)."""
-    headers: list[str] = []
-    all_sizes: list[float] = []
-    size_to_texts: dict[float, list[str]] = {}
-
-    for page in doc:
-        block_dict = page.get_text("dict", sort=True)
-        for block in block_dict.get("blocks", []):
-            for line in block.get("lines", []):
-                for span in line.get("spans", []):
-                    text = (span.get("text") or "").strip()
-                    if not text:
-                        continue
-                    size = float(span.get("size", 0))
-                    if size > 0:
-                        all_sizes.append(size)
-                        size_to_texts.setdefault(size, []).append(text)
-
-    if not all_sizes:
-        return headers
-
-    median_size = statistics.median(all_sizes)
-    # Treat text with size noticeably larger than median as header/title
-    threshold = median_size * 1.15
-    seen: set[str] = set()
-    for size, texts in sorted(size_to_texts.items(), reverse=True):
-        if size < threshold:
-            break
-        for t in texts:
-            if t and t not in seen:
-                seen.add(t)
-                headers.append(t)
-
-    return headers
-
-
-def _extract_tables_from_pdf(doc: fitz.Document) -> list[str]:
-    """Extract tables from PDF pages as Markdown strings (PyMuPDF find_tables + to_markdown)."""
-    tables: list[str] = []
-    for page in doc:
-        try:
-            finder = page.find_tables()
-            for table in finder.tables:
-                try:
-                    md = table.to_markdown()
-                    if md and md.strip():
-                        tables.append(md.strip())
-                except Exception as e:
-                    logger.debug("Could not export table to markdown: %s", e)
-        except Exception as e:
-            logger.debug("find_tables failed for page %s: %s", page.number, e)
-    return tables
 
 
 def _open_pdf(path: Path) -> fitz.Document:
@@ -213,17 +158,12 @@ class DocumentReader:
                 doc = _open_pdf(path)
                 try:
                     text = _extract_markdown_from_pdf(doc)
-                    headers = _extract_headers_from_pdf(doc)
-                    tables = _extract_tables_from_pdf(doc)
                 finally:
                     doc.close()
             _save_parsed(
                 cached,
                 {
                     "text": text,
-                    "headers": headers,
-                    "tables": tables,
-                    "file_path": str(resolved),
                 },
             )
             return text
@@ -240,47 +180,27 @@ class DocumentReader:
         data = _load_parsed(cached)
         if data is not None and cached.stat().st_mtime >= resolved.stat().st_mtime:
             logger.debug("Using cached parse for %s", path)
-            metadata: dict = {"file_path": data["file_path"]}
-            if data.get("headers"):
-                metadata["headers"] = data["headers"]
-            if data.get("tables"):
-                metadata["tables"] = data["tables"]
-            return Document(text=data["text"], metadata=metadata)
+            return Document(text=data["text"])
         try:
             with _suppress_mupdf_stderr():
                 doc = _open_pdf(path)
                 try:
                     text = _extract_markdown_from_pdf(doc)
-                    headers = _extract_headers_from_pdf(doc)
-                    tables = _extract_tables_from_pdf(doc)
                 finally:
                     doc.close()
             _save_parsed(
                 cached,
                 {
                     "text": text,
-                    "headers": headers,
-                    "tables": tables,
-                    "file_path": str(resolved),
                 },
             )
-            metadata = {"file_path": str(resolved)}
-            if headers:
-                metadata["headers"] = headers
-            if tables:
-                metadata["tables"] = tables
-            return Document(text=text, metadata=metadata)
+            return Document(text=text)
         except Exception as e:
             logger.warning("PyMuPDF conversion failed for %s: %s", path, e)
             return None
 
     def load_documents(self) -> list[Document]:
-        """Load documents from the configured directory as LlamaIndex Documents.
-
-        Each document has text from PyMuPDF and metadata: file_path, headers, tables.
-
-        :return: List of LlamaIndex Document objects.
-        """
+        """Load documents from the configured directory as LlamaIndex Documents."""
         if not self._directory.exists():
             logger.warning("Data directory does not exist: %s", self._directory)
             return []

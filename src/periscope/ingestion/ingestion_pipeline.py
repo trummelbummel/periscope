@@ -118,10 +118,8 @@ class IngestionPipeline:
             chunk_overlap=self._chunk_overlap,
         )
 
+        # Document-level metadata (e.g. file_path) is no longer tracked on chunks; leave paths empty.
         paths: list[str] = []
-        for d in docs:
-            if d.metadata and "file_path" in d.metadata:
-                paths.append(str(d.metadata["file_path"]))
 
         logger.info(
             "Building index from %d nodes persist_dir=%s",

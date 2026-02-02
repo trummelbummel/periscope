@@ -11,10 +11,7 @@ from llama_index.core import VectorStoreIndex
 from llama_index.core.schema import BaseNode, NodeWithScore
 
 from periscope.config import ENABLE_GUARDRAILS
-from periscope.generation.generator import (
-    AnswerGenerator,
-    format_tables_for_display,
-)
+from periscope.generation.generator import AnswerGenerator
 from periscope.monitoring.guardrails import should_abstain
 from periscope.models import QueryResponse, RetrievedNode
 from periscope.retriever.retriever import HybridRetriever
@@ -30,14 +27,10 @@ class Pipeline:
         """Convert LlamaIndex NodeWithScore to our Pydantic RetrievedNode."""
         text = nws.node.get_content()
         node_id = nws.node.node_id
-        metadata = dict(nws.node.metadata) if nws.node.metadata else {}
-        if metadata.get("tables"):
-            metadata["tables_display"] = format_tables_for_display(metadata["tables"])
         return RetrievedNode(
             text=text,
             score=float(nws.score),
             node_id=node_id,
-            metadata=metadata,
         )
 
     @staticmethod

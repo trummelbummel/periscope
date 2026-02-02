@@ -19,32 +19,6 @@ from periscope.models import RetrievedNode
 
 logger = logging.getLogger(__name__)
 
-# Table data from metadata: list of tables, each table = list of rows, row = list of cell strings
-TableData = list[list[list[str | None]]]
-
-
-def format_tables_for_display(tables: TableData) -> str:
-    """Format tables as markdown for context and display.
-
-    :param tables: List of tables (each table is list of rows, row is list of cells).
-    :return: Markdown string with one table per section.
-    """
-    if not tables:
-        return ""
-    parts = []
-    for table in tables:
-        if not table:
-            continue
-        rows = []
-        for row in table:
-            cells = [str(c) if c is not None else "" for c in row]
-            rows.append("| " + " | ".join(cells) + " |")
-        if rows:
-            # Insert header separator after first row (assume first row is header)
-            header_sep = "| " + " | ".join("---" for _ in table[0]) + " |"
-            parts.append(rows[0] + "\n" + header_sep + "\n" + "\n".join(rows[1:]))
-    return "\n\n".join(parts) if parts else ""
-
 
 class AnswerGenerator:
     """Generates answers from query and retrieved context via LLM."""
@@ -74,25 +48,12 @@ class AnswerGenerator:
 
     @staticmethod
     def _build_context_str(nodes: list[RetrievedNode]) -> str:
-        """Build context string from retrieved nodes, including tables when present.
-
-        When a node has metadata["tables"], appends formatted tables so the LLM
-        can reference them in the answer.
-
-        :param nodes: Retrieved chunks.
-        :return: Formatted context string.
-        """
+        """Build context string from retrieved nodes."""
         if not nodes:
             return ""
         parts = []
         for i, node in enumerate(nodes, start=1):
-            block = f"[{i}]\n{node.text}"
-            tables = (node.metadata or {}).get("tables")
-            if tables:
-                table_str = format_tables_for_display(tables)
-                if table_str:
-                    block += "\n\nTables:\n" + table_str
-            parts.append(block)
+            parts.append(f"[{i}]\n{node.text}")
         return "\n\n".join(parts)
 
     def _get_llm(self) -> HuggingFaceInferenceAPI:
