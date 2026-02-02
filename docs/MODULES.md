@@ -65,9 +65,9 @@ Documentation is derived strictly from the codebase (docstrings, `__all__`, and 
 - **Purpose:** Orchestrate retrieval and generation with guardrails and observability (docstring: "Composes: hybrid retrieval -> guardrails -> answer generation. Returns structured QueryResponse with answer, sources, metadata (per PRD).").
 - **Key responsibilities:**
   - Run hybrid retrieval via `HybridRetriever.hybrid_retrieve`.
-  - Convert `NodeWithScore` to `RetrievedNode` (including `tables_display` when metadata has `tables`).
-  - If guardrails enabled and `should_abstain(sources)` True, return `QueryResponse` with empty answer and `abstained=True`.
-  - Otherwise call `AnswerGenerator.generate_answer_with_options(query, context_nodes=sources)` and return `QueryResponse` with answer, sources, metadata (retrieval_time_seconds, num_sources, generation_time_seconds), and `abstained=False`; on generation exception return response with `generation_error` in metadata.
+  - Convert `NodeWithScore` to `RetrievedNode` by copying text, score, and node id.
+  - If guardrails are enabled and `should_abstain(sources)` returns True, return `QueryResponse` with empty answer and `abstained=True`.
+  - Otherwise call `AnswerGenerator.generate_answer_with_options(query, context_nodes=sources)` and return `QueryResponse` with answer, sources, metadata (retrieval_time_seconds, num_sources, generation_time_seconds), and `abstained=False`; on generation exception return a response with `generation_error` in metadata.
 - **Important public interfaces:**
   - `Pipeline` — Class that orchestrates retrieval, guardrails, and answer generation.
   - `Pipeline.run_query(query, vector_index, bm25_nodes, top_k=None) -> QueryResponse` — Static method implementing the full flow.
@@ -90,7 +90,7 @@ Documentation is derived strictly from the codebase (docstrings, `__all__`, and 
 
 - **Purpose:** Configuration for the periscope RAG service (docstring: "All paths, models, ports, and API keys are configurable via environment variables or defaults. Load with python-dotenv for .env support. Lives at project root (next to pyproject.toml).").
 - **Key responsibilities:**
-  - Define and export all settings from environment (with defaults): API (PORT, API_HOST, API_RELOAD), data paths (DATA_DIR, ARXIV_DATA_DIR, PARSED_DIR), arXiv (ARXIV_DEFAULT_QUERY, ARXIV_MAX_RESULTS, ARXIV_API_BASE_URL, ARXIV_HTTP_TIMEOUT, ARXIV_USER_AGENT), document extensions, Chroma/INDEX paths (COLLECTION_NAME), embedding/generation models and prompt, TOP_K, RRF_K, chunking (PARAGRAPH_SEPARATOR, METADATA_SIZE_MARGIN), preprocessing flags, guardrails and SIMILARITY_THRESHOLD, INDEX_VERSION, INGESTION_STATS_PATH, RETRIEVAL_EXPERIMENT_*.
+  - Define and export all settings from environment (with defaults): API (PORT, API_HOST, API_RELOAD), data paths (DATA_DIR, ARXIV_DATA_DIR, PARSED_DIR), arXiv (ARXIV_DEFAULT_QUERY, ARXIV_MAX_RESULTS, ARXIV_API_BASE_URL, ARXIV_HTTP_TIMEOUT, ARXIV_USER_AGENT), document extensions, Chroma/INDEX paths (COLLECTION_NAME), embedding/generation models and prompt, TOP_K, RRF_K, chunking (`CHUNK_SIZE`, `CHUNK_OVERLAP`, `MARKDOWN_INCLUDE_METADATA`, `MARKDOWN_INCLUDE_PREV_NEXT_REL`, `MARKDOWN_HEADER_PATH_SEPARATOR`), preprocessing flags, guardrails and SIMILARITY_THRESHOLD, INDEX_VERSION, INGESTION_STATS_PATH, RETRIEVAL_EXPERIMENT_*.
 - **Important public interfaces:**
   - All uppercase names listed above (e.g. `PORT`, `API_HOST`, `CHROMA_PERSIST_DIR`, `EMBEDDING_MODEL`, `GENERATION_MODEL`, `TOP_K`, `CHUNK_SIZE`, `CHUNK_OVERLAP`, `PARAGRAPH_SEPARATOR`, `METADATA_SIZE_MARGIN`, `COLLECTION_NAME`, `RRF_K`, `INGESTION_STATS_PATH`, `RETRIEVAL_EXPERIMENT_MAX_NODES`, `RETRIEVAL_EXPERIMENT_NUM_QUESTIONS_PER_CHUNK`, etc.) — read by other modules.
 
@@ -162,11 +162,10 @@ Documentation is derived strictly from the codebase (docstrings, `__all__`, and 
 
 ### `ingestion.document_reader`
 
-- **Purpose:** Read and process PDF documents from the data directory using PyMuPDF; support PDF format; cache parsed output under `PARSED_DIR` so parsing does not have to be repeated (docstring).
+- **Purpose:** Read and process PDF documents from the data directory using PyMuPDF; support PDF format; cache parsed output under `PARSED_DIR` (default `data/parsed`) so parsing does not have to be repeated (docstring).
 - **Key responsibilities:**
-  - Load documents from a directory as LlamaIndex Documents via PyMuPDF (fitz); extract text (reading order), section headers (font-size heuristics), and tables (find_tables + to_markdown); add headers and tables to document metadata.
-  - Cache parsed PDFs as JSON in the configured parsed folder (one file per source path, keyed by hash); use cache when present and newer than the source file.
-  - Single-file extraction via `read_pdf_path(path)` returns plain text. `load_documents()` returns one Document per file with metadata: `file_path`, `headers` (section headers and titles), `tables` (table Markdown).
+  - Load documents from a directory as LlamaIndex `Document` objects via PyMuPDF (fitz); extract markdown-formatted text and cache it as JSON (`{"text": ...}`) in the configured parsed folder (one file per source path, keyed by hash); reuse the cached text when present and newer than the source file.
+  - Single-file extraction via `read_pdf_path(path)` returns the extracted markdown text. `load_documents()` returns one `Document` per file with only the text field populated (no additional metadata).
 - **Important public interfaces:**
   - `DocumentReader` — Constructor: directory, required_extensions (defaults from config). Methods: `read_pdf_path(path) -> str`, `load_documents() -> list[Document]`; static: `read_pdf_path_default(path)`, `load_documents_from_directory_default(directory, required_extensions)`.
   - `read_pdf_path(path) -> str` — Module-level.
@@ -184,13 +183,12 @@ Documentation is derived strictly from the codebase (docstrings, `__all__`, and 
 
 ### `ingestion.chunker`
 
-- **Purpose:** Header-aware chunking for research paper structure; use Llama-index (docstring).
+- **Purpose:** Header-aware chunking for research paper structure using LlamaIndex’s `MarkdownNodeParser` and `SentenceSplitter` (docstring).
 - **Key responsibilities:**
-  - Split documents into nodes using SentenceSplitter with configurable chunk_size and chunk_overlap (defaults from config), paragraph_separator `\n\n`.
+  - Split documents into nodes in two stages: first by markdown headers using `MarkdownNodeParser` (configured via `MARKDOWN_INCLUDE_METADATA`, `MARKDOWN_INCLUDE_PREV_NEXT_REL`, `MARKDOWN_HEADER_PATH_SEPARATOR`), then into sentence-based chunks using `SentenceSplitter` with configurable token-level `chunk_size` and `chunk_overlap` (defaults from config).
 - **Important public interfaces:**
-  - `HeaderAwareChunker` — Constructor: chunk_size, chunk_overlap (defaults from config). Methods: `chunk_documents(documents) -> list[BaseNode]`; property `parser` (SentenceSplitter). Static: `get_header_aware_chunker(...) -> SentenceSplitter`, `chunk_documents_with_options(...) -> list[BaseNode]`.
-  - `PARAGRAPH_SEPARATOR` — `"\n\n"`.
-  - `get_header_aware_chunker(chunk_size=None, chunk_overlap=None) -> SentenceSplitter`
+  - `HeaderAwareChunker` — Constructor: `chunk_size`, `chunk_overlap` (defaults from config). Methods: `chunk_documents(documents) -> list[BaseNode]`; properties: `parser` (the underlying `MarkdownNodeParser`), `pipeline` (the full LlamaIndex `IngestionPipeline`). Static: `get_header_aware_chunker(...) -> NodeParser` (returns the `MarkdownNodeParser`), `chunk_documents_with_options(...) -> list[BaseNode]`.
+  - `get_header_aware_chunker(chunk_size=None, chunk_overlap=None) -> NodeParser`
   - `chunk_documents(documents, chunk_size=None, chunk_overlap=None) -> list[BaseNode]`
 
 ### `ingestion.table_extractor`
@@ -220,7 +218,7 @@ Documentation is derived strictly from the codebase (docstrings, `__all__`, and 
 
 - **Purpose:** Vector database storage for embedded chunks; ChromaDB for PoC; index in Chroma, BM25 nodes at INDEX_NODES_PATH (docstring).
 - **Key responsibilities:**
-  - Create Chroma persistent client and collection (with index_version in metadata); build VectorStoreIndex from nodes (embed and store); load existing index from Chroma; persist/load BM25 nodes via pickle.
+  - Create a Chroma persistent client and collection (with `index_version` in collection metadata); build a `VectorStoreIndex` from nodes by embedding **only the node text** (metadata is stored but not included in the embedding vectors) and storing it in Chroma; load existing index from Chroma; persist/load BM25 nodes via pickle.
 - **Important public interfaces:**
   - `ChromaIndexBuilder` — Constructor: persist_dir (default from config). Methods: `get_chroma_vector_store() -> ChromaVectorStore`, `build_index_from_nodes(nodes) -> VectorStoreIndex`; static defaults for both.
   - `build_index_from_nodes(nodes, persist_dir=None) -> VectorStoreIndex`
@@ -245,12 +243,11 @@ Documentation is derived strictly from the codebase (docstrings, `__all__`, and 
 
 ### `generation.generator`
 
-- **Purpose:** Generate responses using LLM based on retrieved context; use GENERATION_MODEL and GENERATION_PROMPT; Hugging Face Inference API (serverless); error handling for model calls (docstring).
+- **Purpose:** Generate responses using an LLM based on retrieved context; use `GENERATION_MODEL`, `GENERATION_PROMPT`, and `GENERATION_MAX_TOKENS`; Hugging Face Inference API (serverless); error handling for model calls (docstring).
 - **Key responsibilities:**
-  - Build context string from RetrievedNode list (including formatted tables from metadata); format prompt with context_str and query_str; call LLM complete; return answer text. Support injected LLM or create from config (model, token).
+  - Build a context string from a list of `RetrievedNode` instances (concatenating their `text` fields), format the generation prompt with `{context_str}` and `{query_str}`, construct a `HuggingFaceInferenceAPI` LLM with `num_output=GENERATION_MAX_TOKENS`, call `complete`, and return the answer text. Supports injecting an LLM instance or creating one from config (model, token).
 - **Important public interfaces:**
-  - `format_tables_for_display(tables: TableData) -> str` — Format tables as markdown.
-  - `AnswerGenerator` — Constructor: model, token, prompt_template, llm (defaults from config). Methods: `generate_answer(query, context_nodes) -> str`, `_get_llm()`. Static: `_build_context_str`, `get_llm(model=None, token=None) -> HuggingFaceInferenceAPI`, `generate_answer_with_options(query, context_nodes, prompt_template=None, llm=None) -> str`.
+  - `AnswerGenerator` — Constructor: `model`, `token`, `prompt_template`, `llm` (all default from config). Methods: `generate_answer(query, context_nodes) -> str`, `_get_llm()`. Static: `_build_context_str`, `get_llm(model=None, token=None) -> HuggingFaceInferenceAPI`, `generate_answer_with_options(query, context_nodes, prompt_template=None, llm=None) -> str`.
   - `get_llm(...)`, `generate_answer(...)` — Module-level wrappers.
 
 ---
