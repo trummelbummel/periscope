@@ -72,13 +72,12 @@ GENERATION_PROMPT = os.environ.get(
     ### INSTRUCTIONS
     1. Do not duplicate or hallucinate any information.
     2. Answer the question based only on the following context and strictly 
-    adhere to information in the context minimizing duplication. 
+    adhere to information in the context minimizing duplication maximizing structure. 
     3. Structure the important information in the answer with respect to 
     the question in bullet points and return only this summary.
 
     ### FORMAT
-    4. Answer in well structured markdown format adding Headers with method names. 
-    5. Use bullet points to structure the answer.
+    5. Use bullet points to structure the answer and only return this summary.
 
     Follow all these instructions strictly. 
 

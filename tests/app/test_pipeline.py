@@ -92,3 +92,40 @@ def test_run_query_returns_answer_when_generation_succeeds() -> None:
     assert "retrieval_time_seconds" in result.metadata
     assert "generation_time_seconds" in result.metadata
 
+
+def test_run_query_propagates_source_metadata() -> None:
+    """run_query propagates node metadata (e.g. file_path) into sources."""
+    mock_index = MagicMock()
+    mock_nodes: list = []
+    with (
+        patch(
+            "periscope.app.pipeline.HybridRetriever.hybrid_retrieve"
+        ) as mock_retrieve,
+        patch(
+            "periscope.app.pipeline.should_abstain"
+        ) as mock_abstain,
+        patch(
+            "periscope.app.pipeline.AnswerGenerator.generate_answer_with_options"
+        ) as mock_gen,
+    ):
+        mock_nws = MagicMock()
+        mock_nws.node.get_content.return_value = "ctx"
+        mock_nws.node.node_id = "id1"
+        mock_nws.node.metadata = {
+            "file_path": "/data/doc.pdf",
+            "page_number": 3,
+        }
+        mock_nws.score = 0.9
+        mock_retrieve.return_value = [mock_nws]
+        mock_abstain.return_value = False
+        mock_gen.return_value = "Answer"
+
+        result = run_query("query", mock_index, mock_nodes)
+
+    assert isinstance(result, QueryResponse)
+    assert len(result.sources) == 1
+    source = result.sources[0]
+    assert isinstance(source, RetrievedNode)
+    assert source.metadata.get("file_path") == "/data/doc.pdf"
+    assert source.metadata.get("page_number") == 3
+

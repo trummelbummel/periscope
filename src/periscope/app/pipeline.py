@@ -27,10 +27,12 @@ class Pipeline:
         """Convert LlamaIndex NodeWithScore to our Pydantic RetrievedNode."""
         text = nws.node.get_content()
         node_id = nws.node.node_id
+        metadata = dict(nws.node.metadata) if getattr(nws.node, "metadata", None) else {}
         return RetrievedNode(
             text=text,
             score=float(nws.score),
             node_id=node_id,
+            metadata=metadata,
         )
 
     @staticmethod

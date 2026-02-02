@@ -43,6 +43,40 @@ def test_query_returns_200_and_query_response() -> None:
     assert "metadata" in data
 
 
+def test_query_includes_source_metadata_in_response() -> None:
+    """POST /query returns sources with metadata (e.g. file_path) for UI."""
+    mock_index = MagicMock()
+    mock_nodes: list = []
+    expected = QueryResponse(
+        answer="Generated answer",
+        sources=[
+            {
+                "text": "ctx",
+                "score": 0.9,
+                "node_id": "id1",
+                "metadata": {"file_path": "/data/doc.pdf", "page_number": 3},
+            }
+        ],
+        metadata={"retrieval_time_seconds": 0.1, "generation_time_seconds": 0.2},
+        abstained=False,
+    )
+    with (
+        patch(
+            "periscope.app.api._ensure_index_or_raise",
+            return_value=(mock_index, mock_nodes),
+        ),
+        patch("periscope.app.api.run_query", return_value=expected),
+    ):
+        response = client.post("/query", json={"query": "What is Periscope?"})
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data.get("sources"), list)
+    assert len(data["sources"]) == 1
+    source = data["sources"][0]
+    assert source["metadata"]["file_path"] == "/data/doc.pdf"
+    assert source["metadata"]["page_number"] == 3
+
+
 def test_query_accepts_optional_top_k() -> None:
     """POST /query accepts optional top_k and passes it to run_query."""
     mock_index = MagicMock()

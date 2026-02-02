@@ -1,29 +1,9 @@
 {
-  "document_count": 19,
-  "chunk_count": 2904,
-  "total_chars": 880677,
-  "avg_chunk_size": 303.26,
-  "paths": [
-    "/Users/theresa/projects/miro_case/periscope/data/test/2305.03495v2.pdf",
-    "/Users/theresa/projects/miro_case/periscope/data/test/2305.13954v3.pdf",
-    "/Users/theresa/projects/miro_case/periscope/data/test/2306.12509v2.pdf",
-    "/Users/theresa/projects/miro_case/periscope/data/test/2307.07415v2 copy.pdf",
-    "/Users/theresa/projects/miro_case/periscope/data/test/2307.07415v2.pdf",
-    "/Users/theresa/projects/miro_case/periscope/data/test/2308.04857v1.pdf",
-    "/Users/theresa/projects/miro_case/periscope/data/test/2311.04155v3.pdf",
-    "/Users/theresa/projects/miro_case/periscope/data/test/2401.17263v5.pdf",
-    "/Users/theresa/projects/miro_case/periscope/data/test/2402.03099v1.pdf",
-    "/Users/theresa/projects/miro_case/periscope/data/test/2402.09723v3.pdf",
-    "/Users/theresa/projects/miro_case/periscope/data/test/2402.11347v2.pdf",
-    "/Users/theresa/projects/miro_case/periscope/data/test/2403.01251v3.pdf",
-    "/Users/theresa/projects/miro_case/periscope/data/test/2403.02993v1.pdf",
-    "/Users/theresa/projects/miro_case/periscope/data/test/2403.17804v1.pdf",
-    "/Users/theresa/projects/miro_case/periscope/data/test/2405.02517v1.pdf",
-    "/Users/theresa/projects/miro_case/periscope/data/test/2405.04781v1.pdf",
-    "/Users/theresa/projects/miro_case/periscope/data/test/2405.17346v1.pdf",
-    "/Users/theresa/projects/miro_case/periscope/data/test/2405.18369v2.pdf",
-    "/Users/theresa/projects/miro_case/periscope/data/test/2405.20252v2.pdf"
-  ],
+  "document_count": 101,
+  "chunk_count": 14455,
+  "total_chars": 6034101,
+  "avg_chunk_size": 417.44,
+  "paths": [],
   "index_version": "1",
   "embedding_model": "intfloat/e5-small-v2",
   "preprocessing_config": {
@@ -32,6 +12,6 @@
     "remove_inline_citations": true,
     "remove_reference_section": true
   },
-  "chunk_size": 128,
+  "chunk_size": 512,
   "chunk_overlap": 20
 }

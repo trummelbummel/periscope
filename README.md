@@ -6,10 +6,17 @@
 [![Commit activity](https://img.shields.io/github/commit-activity/m/trummelbummel/periscope)](https://img.shields.io/github/commit-activity/m/trummelbummel/periscope)
 [![License](https://img.shields.io/github/license/trummelbummel/periscope)](https://img.shields.io/github/license/trummelbummel/periscope)
 
-This is a module implementing a rag use case with cursor.
+
+# Documentation
+
+To find them Deep research is often too high level and Google won't find anything of value either. That is why there is Periscope a RAG system containing information on the latests Arxiv papers on context engineering, chunked based on understanding of research paper structure can give us an edge to find information that will make a difference.
+
+More information on this project can also be found in `./docs`.
+
+After running make run-api following the steps above open the UI and test with a question like: What methods give more than 10% performance improvements in prompt optimization?
 
 - **Github repository**: <https://github.com/trummelbummel/periscope/>
-- **Documentation** <https://trummelbummel.github.io/periscope/>
+
 
 ## Run commands
 
@@ -33,15 +40,7 @@ make run-scraper   # one-time: download papers
 make run-api       # start server; open http://localhost:8000/ui/
 ```
 
-After running make run-api following the steps above open the UI and test with a question like: What methods give more than 10% performance improvements in prompt optimization?
-
 ---
-
-# Documentation
-
-To find them Deep research is often too high level and Google won't find anything of value either. That is why there is Periscope a RAG system containing information on the latests Arxiv papers on context engineering, chunked based on understanding of research paper structure can give us an edge to find information that will make a difference.
-
-More information on this project can also be found in `./docs`.
 
 ## Configuration
 

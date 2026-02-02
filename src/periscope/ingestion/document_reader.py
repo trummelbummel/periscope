@@ -164,6 +164,7 @@ class DocumentReader:
                 cached,
                 {
                     "text": text,
+                    "file_path": str(resolved),
                 },
             )
             return text
@@ -180,7 +181,8 @@ class DocumentReader:
         data = _load_parsed(cached)
         if data is not None and cached.stat().st_mtime >= resolved.stat().st_mtime:
             logger.debug("Using cached parse for %s", path)
-            return Document(text=data["text"])
+            metadata = {"file_path": data.get("file_path", str(resolved))}
+            return Document(text=data["text"], metadata=metadata)
         try:
             with _suppress_mupdf_stderr():
                 doc = _open_pdf(path)
@@ -192,9 +194,11 @@ class DocumentReader:
                 cached,
                 {
                     "text": text,
+                    "file_path": str(resolved),
                 },
             )
-            return Document(text=text)
+            metadata = {"file_path": str(resolved)}
+            return Document(text=text, metadata=metadata)
         except Exception as e:
             logger.warning("PyMuPDF conversion failed for %s: %s", path, e)
             return None
