@@ -11,6 +11,31 @@ This is a module implementing a rag use case with cursor.
 - **Github repository**: <https://github.com/trummelbummel/periscope/>
 - **Documentation** <https://trummelbummel.github.io/periscope/>
 
+## Run commands
+
+From the project root (after `make install`):
+
+| Command | Description |
+|---------|-------------|
+| `make test` | Run tests (pytest) |
+| `make install` | Install dependencies and pre-commit hooks |
+| `make run-api` | Start the RAG API (default: http://localhost:8000) |
+| `make run-scraper` | Fetch arXiv PDFs into `data/arxiv/` |
+| `make run-monitoring` | Run retrieval evaluation and write metrics |
+| `uv run pre-commit run -a` | Run pre-commit hooks (format, lint) |
+
+Example:
+
+```bash
+make install
+make test
+make run-scraper   # one-time: download papers
+make run-api       # start server; open http://localhost:8000/ui/
+```
+
+After running make run-api following the steps above open the UI and test with a question like: What methods give more than 10% performance improvements in prompt optimization?
+
+---
 
 # Documentation
 
