@@ -72,9 +72,9 @@ GENERATION_PROMPT = os.environ.get(
     ### INSTRUCTIONS
     1. Do not duplicate or hallucinate any information.
     2. Answer the question based only on the following context and strictly 
-    adhere to information in the context. 
+    adhere to information in the context minimizing duplication. 
     3. Structure the important information in the answer with respect to 
-    the question in bullet points.
+    the question in bullet points and return only this summary.
 
     ### FORMAT
     4. Answer in well structured markdown format adding Headers with method names. 
@@ -103,28 +103,22 @@ COLLECTION_NAME = os.environ.get("COLLECTION_NAME", "context_engineering")
 
 # Chunking (Markdown then SentenceSplitter via LlamaIndex IngestionPipeline)
 # SentenceSplitter uses token counts; chunker result is at most CHUNK_SIZE tokens per chunk.
-CHUNK_SIZE = int(os.environ.get("CHUNK_SIZE", "128"))
+CHUNK_SIZE = int(os.environ.get("CHUNK_SIZE", "512"))
 CHUNK_OVERLAP = int(os.environ.get("CHUNK_OVERLAP", "20"))
 PARAGRAPH_SEPARATOR = os.environ.get("PARAGRAPH_SEPARATOR", "#")
-# MarkdownNodeParser: heading levels to split on (1=#, 2=##, 3=###); env e.g. "1,2,3"
-def _parse_int_list(env_val: str, default: list[int]) -> list[int]:
-    if not env_val or not env_val.strip():
-        return default
-    try:
-        return [int(x.strip()) for x in env_val.split(",") if x.strip()]
-    except ValueError:
-        return default
-
-
-MARKDOWN_INCLUDE_HEADING_LEVELS: list[int] = _parse_int_list(
-    os.environ.get("MARKDOWN_INCLUDE_HEADING_LEVELS", "1,2,3"), [1, 2, 3]
-)
+# MarkdownNodeParser configuration: whether to include header metadata and prev/next relationships,
+# and which separator to use for the header_path metadata field.
 MARKDOWN_INCLUDE_METADATA = (
-    os.environ.get("MARKDOWN_INCLUDE_METADATA", "true").strip().lower()
+    os.environ.get("MARKDOWN_INCLUDE_METADATA", "false").strip().lower()
     in ("1", "true", "yes")
 )
-# Leave room so metadata + text per chunk stays under chunk_size in SentenceSplitter
-METADATA_SIZE_MARGIN = int(os.environ.get("METADATA_SIZE_MARGIN", "128"))
+MARKDOWN_INCLUDE_PREV_NEXT_REL = (
+    os.environ.get("MARKDOWN_INCLUDE_PREV_NEXT_REL", "false").strip().lower()
+    in ("1", "true", "yes")
+)
+MARKDOWN_HEADER_PATH_SEPARATOR = os.environ.get(
+    "MARKDOWN_HEADER_PATH_SEPARATOR", "/"
+)
 
 # Preprocessing during ingestion: remove noise (tables, footnotes, citations, references)
 def _truthy(s: str) -> bool:
