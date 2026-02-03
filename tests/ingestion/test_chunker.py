@@ -1,12 +1,13 @@
 """Tests for chunker (periscope.ingestion.chunker)."""
 
 from llama_index.core import Document
+from llama_index.core.utils import get_tokenizer
 
 from periscope.ingestion import chunk_documents
 
 
 def test_chunk_documents_produces_nodes() -> None:
-    """chunk_documents splits documents into nodes for indexing."""
+    """chunk_documents splits documents into nodes and respects chunk_size (in tokens)."""
     docs = [
         Document(text="First sentence. Second sentence. Third sentence. " * 30),
     ]
@@ -14,8 +15,14 @@ def test_chunk_documents_produces_nodes() -> None:
     chunk_overlap = 10
     nodes = chunk_documents(docs, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     assert len(nodes) >= 1
+    tokenizer = get_tokenizer()
     for node in nodes:
-        assert len(node.get_content()) > 0
+        text = node.get_content()
+        assert len(text) > 0
+        token_count = len(tokenizer(text))
+        assert token_count <= chunk_size, (
+            f"Chunk has {token_count} tokens, exceeds chunk_size={chunk_size}"
+        )
 
 
 def test_markdown_headers_are_parsed() -> None:

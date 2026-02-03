@@ -118,8 +118,8 @@ class HeaderAwareChunker:
         """Split documents into nodes (convenience: create chunker and run).
 
         :param documents: LlamaIndex Documents to chunk.
-        :param chunk_size: Characters per chunk; default from config.
-        :param chunk_overlap: Overlap between chunks; default from config.
+        :param chunk_size: Max tokens per chunk (SentenceSplitter); default from config.
+        :param chunk_overlap: Overlap between chunks in tokens; default from config.
         :return: List of nodes (chunks).
         """
         chunker = HeaderAwareChunker(chunk_size=chunk_size, chunk_overlap=chunk_overlap)

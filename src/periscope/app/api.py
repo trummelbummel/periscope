@@ -19,6 +19,7 @@ from periscope.config import (
     EMBEDDING_MODEL,
     INDEX_NODES_PATH,
     INGESTION_STATS_PATH,
+    INDEX_VERSION,
     PORT,
     PREPROCESS_REMOVE_FOOTNOTES,
     PREPROCESS_REMOVE_INLINE_CITATIONS,
@@ -70,6 +71,7 @@ def _current_pipeline_config() -> dict:
         "embedding_model": EMBEDDING_MODEL,
         "chunk_size": CHUNK_SIZE,
         "chunk_overlap": CHUNK_OVERLAP,
+        "index_version": INDEX_VERSION,
         "preprocessing_config": {
             "remove_tables": PREPROCESS_REMOVE_TABLES,
             "remove_footnotes": PREPROCESS_REMOVE_FOOTNOTES,
@@ -83,6 +85,8 @@ def _pipeline_config_matches(stats: IngestionStats) -> bool:
     """True if persisted stats match current pipeline config (no re-ingest needed)."""
     current = _current_pipeline_config()
     if stats.embedding_model != current["embedding_model"]:
+        return False
+    if stats.index_version != current["index_version"]:
         return False
     if stats.chunk_size != 0 and stats.chunk_size != current["chunk_size"]:
         return False
@@ -143,30 +147,24 @@ def _ensure_index_or_raise(status_code: int = 503, log_message: str = "Failed to
 @app.get("/health")
 def health() -> dict:
     """Health check."""
-    logger.info("GET /health")
     return {"status": "ok"}
 
 
 @app.post("/query", response_model=QueryResponse)
 def query(request: QueryRequest) -> QueryResponse:
     """Run retrieval and generation for a user question."""
-    top_k = request.top_k if request.top_k is not None else TOP_K
-    logger.info("POST /query query=%r top_k=%s", request.query, top_k)
     vector_index, bm25_nodes = _ensure_index_or_raise(503, "Failed to load index: %s")
-    response = run_query(
+    top_k = request.top_k if request.top_k is not None else TOP_K
+    return run_query(
         query=request.query,
         vector_index=vector_index,
         bm25_nodes=bm25_nodes,
         top_k=top_k,
     )
-    logger.info("POST /query completed query=%r answer_len=%d", request.query, len(response.answer))
-    return response
 
 
 @app.post("/ingest")
 def ingest() -> dict:
     """Trigger ingestion: load PDFs from data dir, chunk, embed, store. Returns stats."""
-    logger.info("POST /ingest")
     _ensure_index_or_raise(500, "Ingest failed: %s")
-    logger.info("POST /ingest completed index built")
     return {"status": "ok", "message": "Index built from data directory"}

@@ -22,6 +22,7 @@ from periscope.config import (
     DEFAULT_DOCUMENT_EXTENSIONS,
     EMBEDDING_MODEL,
     INDEX_NODES_PATH,
+    INDEX_VERSION,
     INGESTION_STATS_PATH,
     PREPROCESS_REMOVE_FOOTNOTES,
     PREPROCESS_REMOVE_INLINE_CITATIONS,
@@ -112,14 +113,50 @@ class IngestionPipeline:
             )
 
         docs = preprocess_documents(docs, self._preprocessing_config)
+
+        # Build mapping from document id to file_path so we can re-attach it
+        # to all derived chunk nodes (for UI source display) even if intermediate
+        # transforms drop document-level metadata.
+        doc_file_paths: dict[str, str] = {}
+        for doc in docs:
+            file_path = (doc.metadata or {}).get("file_path")
+            if not file_path:
+                continue
+            doc_id = getattr(doc, "doc_id", getattr(doc, "id_", None))
+            if doc_id is not None:
+                doc_file_paths[str(doc_id)] = str(file_path)
+
         nodes = chunk_documents(
             docs,
             chunk_size=self._chunk_size,
             chunk_overlap=self._chunk_overlap,
         )
 
-        # Document-level metadata (e.g. file_path) is no longer tracked on chunks; leave paths empty.
-        paths: list[str] = []
+        # Re-attach file_path metadata to chunk nodes based on their ref_doc_id
+        # so that retrieval responses can surface document sources in the UI.
+        for node in nodes:
+            try:
+                # Some node types expose ref_doc_id; fall back to existing metadata.
+                ref_id = getattr(node, "ref_doc_id", None)
+                if not ref_id:
+                    continue
+                file_path = doc_file_paths.get(str(ref_id))
+                if not file_path:
+                    continue
+                meta = dict(getattr(node, "metadata", {}) or {})
+                # Do not overwrite an existing file_path if already present.
+                if "file_path" not in meta:
+                    meta["file_path"] = file_path
+                    node.metadata = meta  # type: ignore[attr-defined]
+            except Exception:
+                # Best-effort; metadata attachment should never break ingestion.
+                logger.debug(
+                    "Could not attach file_path metadata to node %s",
+                    getattr(node, "node_id", None),
+                )
+
+        # For monitoring, record unique source document paths (if any).
+        paths: list[str] = sorted(set(doc_file_paths.values()))
 
         logger.info(
             "Building index from %d nodes persist_dir=%s",
@@ -147,7 +184,7 @@ class IngestionPipeline:
             preprocessing_config=self._preprocessing_config.to_dict(),
             chunk_size=self._chunk_size,
             chunk_overlap=self._chunk_overlap,
-            index_version=None,
+            index_version=INDEX_VERSION,
         )
         write_ingestion_stats(stats, output_path=self._ingestion_stats_path)
         logger.info("Wrote ingestion stats to %s", self._ingestion_stats_path)

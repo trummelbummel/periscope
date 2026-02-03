@@ -72,12 +72,10 @@ GENERATION_PROMPT = os.environ.get(
     ### INSTRUCTIONS
     1. Do not duplicate or hallucinate any information.
     2. Answer the question based only on the following context and strictly 
-    adhere to information in the context minimizing duplication maximizing structure. 
-    3. Structure the important information in the answer with respect to 
-    the question in bullet points and return only this summary.
-
+    adhere to information in the context minimizing in bullet points. 
+   
     ### FORMAT
-    5. Use bullet points to structure the answer and only return this summary.
+    3. Use bullet points to structure the answer and only return this summary.
 
     Follow all these instructions strictly. 
 
@@ -136,8 +134,9 @@ ENABLE_GUARDRAILS = os.environ.get("ENABLE_GUARDRAILS", "false").strip().lower()
 )
 SIMILARITY_THRESHOLD = float(os.environ.get("SIMILARITY_THRESHOLD", "0.5"))
 
-# Index version: used in ingestion stats, retrieval evaluation, and Chroma collection metadata
-INDEX_VERSION = os.environ.get("INDEX_VERSION", "1")
+# Index version: used in ingestion stats, retrieval evaluation, and Chroma collection metadata.
+# Bump this to force re-ingestion when index semantics change (e.g. new node metadata such as file_path).
+INDEX_VERSION = os.environ.get("INDEX_VERSION", "4")
 
 # Monitoring: where to write ingestion statistics
 INGESTION_STATS_PATH: Path = Path(
